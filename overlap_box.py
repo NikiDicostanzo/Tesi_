@@ -81,7 +81,7 @@ def marge_bb(bb, labels):
        
         while j < (len(bb)): 
             iou = check_overlap([x0,y0,x1,y1], bb[j]) 
-            if iou > 0.0:               # si sovrappongono 
+            if iou > 0.0 and labels[k] == labels[j]:               # si sovrappongono 
                 #print("The boxes overlap.", iou, j, 'k', k)
                 # new bounding box 
                 x0 = min(bb[j][0], x0)
@@ -132,7 +132,7 @@ def get_bb_merge(path_image, txt, path_save, detect):
     return new_bb, new_labels
 
 # Merge su tutte le immagini
-def merge_all_image(folder):
+def merge_all_image(folder, type_img):
     # txt e img devono avere stesso nome!
     path_images = folder + 'images/'
     path_txt = folder + 'labels/'
@@ -149,7 +149,7 @@ def merge_all_image(folder):
         name = '.'.join(d.split('.')[0:len(d.split('.'))-1])
         txt = path_txt + name + '.txt'
 
-        detect = images_detect + name +'.png'
+        detect = images_detect + name + type_img
         
         save_image = path_save + d        
         new_bb, new_labels = get_bb_merge(path_image, txt, save_image, detect)
@@ -181,5 +181,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="...")
    # parser.add_argument("--video", dest="video", default=None, help="Path of the video")
     #folder = 'exp_test/'
-    folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
-    merge_all_image(folder)
+    #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
+    #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
+
+    folder = 'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
+    merge_all_image(folder, '.jpg')

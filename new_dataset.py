@@ -12,54 +12,59 @@ def get_data():
     #immagini
     #labels
 
-    folder_save = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
+    folder_save = 'C:/Users/ninad/Desktop/test_Exp_S/'
 
     #json per documento
     path_jsons = 'HRDS/test/'
     path_images = 'HRDS/images/'
     list_json = os.listdir(path_jsons)
-
+    labels_set = [] # :
+    '''
+    {'author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 'fig', 'mail', 'secx', 'title', 
+    'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili'}
+    '''
     #
-    #for json in list_json:
-    d = 'ACL_P10-1160.json'
-    path_json = path_jsons + d
-    name = d.replace('.json', '')
-    folder = path_images + name + '/' 
-    draw, image, name_image = get_draw(name, folder, 0) #inizializzo
+    for d in list_json:
+        #d = 'EMNLP_D16-1044.json'#'ACL_P10-1160.json'
+        path_json = path_jsons + d
+        name = d.replace('.json', '')
+        folder = path_images + name + '/' 
+        draw, image, name_image = get_draw(name, folder, 0) #inizializzo
 
-    with open(path_json, errors="ignore") as json_file:
-        data = json.load(json_file)
-        
-        for i in range(len(data)):
-            #print(i.items())
-            page = data[i]['page']
+        with open(path_json, errors="ignore") as json_file:
+            data = json.load(json_file)
             
-            #path_iamge = 'ACL_2020.acl-main.99.json'.replace('.json', name)
-           # print(path_iamge)
+            for i in range(len(data)):
+                #print(i.items())
+                page = data[i]['page']
+                labels_set.append(data[i]['class'])
+                #path_iamge = 'ACL_2020.acl-main.99.json'.replace('.json', name)
+            # print(path_iamge)
 
-            #passa alla nuova pagina, salvo 
-            if i> 0 and page != data[i-1]['page']:  
-                path_save = folder_save +'images_gt/' + name_image
-                image.save(path_save)
-                draw, image, name_image = get_draw(name, folder, page)
-                
-                print(page)
-            if data[i]['class'] == "title":
-                color = 'green'
-            elif data[i]['class'] == "sec1":
-                color = 'red'
-            elif data[i]['class'] == "sec2":
-                color = 'orange'
-            elif data[i]['class'] == "sec3":
-                color = 'magenta'
-            elif data[i]['class'] == "tab":
-                color = 'cyan'
-            else:
-                color = 'black'
-           # elif data[i]['class'] == "para":
-           #     color = 'yellow'
-            draw.rectangle(data[i]['box'], outline = color) 
-       # image.show()
+                #passa alla nuova pagina, salvo 
+                if i> 0 and page != data[i-1]['page']:  
+                    path_save = folder_save +'images_gt/' + name_image
+                    #image.save(path_save)
+                    draw, image, name_image = get_draw(name, folder, page)
+                    
+                    print(page)
+                if data[i]['class'] == "title":
+                    color = 'green'
+                elif data[i]['class'] == "sec1":
+                    color = 'red'
+                elif data[i]['class'] == "sec2":
+                    color = 'red'
+                elif data[i]['class'] == "sec3":
+                    color = 'red'
+                elif data[i]['class'] == "tab":
+                    color = 'cyan'
+                else:
+                    color = 'black'
+            # elif data[i]['class'] == "para":
+            #     color = 'yellow'
+                draw.rectangle(data[i]['box'], outline = color) 
+        # image.show()
+    #print(set(labels_set))
 
 def get_draw(name, folder, page):
     print(folder)

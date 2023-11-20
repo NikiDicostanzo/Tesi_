@@ -4,6 +4,17 @@ import argparse
 import os
 from PIL import Image, ImageDraw as D
 
+### DOC
+# TRAIN: 394 pdf => 8550  %65 -> 1318-
+    # TEST:  301 pdf => 4634  %35
+    # VAL: fino a doc 62 =>    1331
+
+### HRS
+# TRAIN: 900 pdf => 8286  %65 -> 1318-
+    # TEST:  100 pdf => 938  %35
+    # VAL: fino a doc 62 =>    1331
+
+
 # x0, y0, x1, y1
 def create_ann(box, size_w, size_h):
     center = [((box[2] + box[0]) / 2) / size_w, ((box[3] + box[1]) / 2) / size_h]
@@ -15,28 +26,28 @@ def create_ann(box, size_w, size_h):
     txt_data = str(center[0]) + ' ' + str(center[1]) + ' ' + str(w) + ' ' + str(h) 
     return txt_data 
 
-
-
+#OLD dataset
 # path_json-> train o val
-def get_data(path_json, folder):
-    # TRAIN: 394 pdf => 8550  %65 -> 1318-
-    # TEST:  301 pdf => 4634  %35
-    # VAL: fino a doc 62 =>    1331
+def get_data(path_json, folder, pagine):
+    
     with open(path_json, errors="ignore") as json_file:
         j = json.load(json_file)
-        pagine = 0
+        #pagine = 0
+        
         
         for m in range(len(j)): #ciclo sui doc-> cioè su 'lines'
             img_pdf = j[m]["imgs_path"]
             lines = j[m]["lines"]
             
             pagine += len(lines)
-            if m < 63 :
-                folder_dest = folder + 'val/'
-                print('Doc VAL: ', m, ' Pagine: ', len(lines),'tot: ', pagine)
-            else:
-                folder_dest = folder + 'train/'
-                print('Doc TRAIN: ', m, ' Pagine: ', len(lines),'tot: ', pagine)
+
+            # if m < 63 :
+            #     folder_dest = folder + 'val/'
+            #     print('Doc VAL: ', m, ' Pagine: ', len(lines),'tot: ', pagine)
+            # else:
+            #     folder_dest = folder + 'train/'
+            #     print('Doc TRAIN: ', m, ' Pagine: ', len(lines),'tot: ', pagine)
+            folder_dest = folder + 'test/'
 
             for k in range(len(lines)): # 1 pdf con + immagini
                  
@@ -75,7 +86,113 @@ def get_data(path_json, folder):
                         f.write('\n')
                 save_im = folder_dest + 'images/' + name_image
                 image.save(save_im)
-     
+
+#NEW dataset
+# path_json-> train o val
+def get_data(path_json, path_image, folder, pagine, name,num):
+    
+    with open(path_json, errors="ignore") as json_file:
+        data = json.load(json_file)
+        #pagine = 0
+        len_data = len(data)
+        pagine += data[len_data-1]["page"]
+        num+=1
+        #print(pagine)
+        #print(num)
+        # if pagine < 100:
+        #     folder_dest = folder + 'val/'
+        #     #print('Doc VAL:', pagine)
+        # else:
+        #     folder_dest = folder + 'train/'
+        #     #print('Doc TRAIN: ', pagine)  
+        folder_dest = folder + 'test/'
+        count_page = 0
+        write = []
+        for index in range(len(data)) :
+
+            #se cambia pagina salvo
+            if index > 0 and data[index]['page'] != data[index-1]['page']: 
+                
+                save_lab = folder_dest + 'labels/' + name_labels
+               # print(save_lab)
+                with open(save_lab, 'w') as f:
+                    for i in write:
+                        f.write(i)
+                        f.write('\n')
+                save_im = folder_dest + 'images/' + name_image
+                image.save(save_im) 
+                write = []
+
+
+            page = data[index]['page']
+            im = path_image + '_' + str(page) + '.jpg'
+            image = Image.open(im)
+            width, height = image.size
+            name_image  = name +'_' +str(page) + '.png'
+            name_labels = name +'_'+ str(page) +'.txt'
+
+                
+            #class_lab = ''
+            # Classes 
+            """ names:
+            0: title
+            1: sec1
+            2: sec2
+            3: sec3
+            4: fstline
+            5: equ
+            6: tab
+            7: fig
+            8: other """  
+            # label_idx x_center y_center width height
+            #   label_idx = is_title (0, 1)
+            name_class = data[index]['class'] 
+            if name_class == 'title':
+                class_lab = '0'
+            elif name_class == 'sec1':
+                class_lab = '1'
+            elif name_class == 'sec2':
+                class_lab = '2'
+            elif name_class == 'sec3':
+                class_lab = '3'
+            elif name_class == 'fstline':
+                class_lab = '4'
+            elif name_class == 'equ':
+                class_lab = '5'
+            elif name_class == 'tab':
+                class_lab = '6'
+            elif name_class == 'fig':
+                class_lab = '7'
+            else:
+                class_lab = '8'
+            
+
+            txt_data = create_ann(data[index]['box'], width, height)
+          
+            tmp = class_lab + ' ' + txt_data  
+            #if class_lab== '0':
+            #      print(tmp, name_labels)
+            write.append(tmp)
+
+            
+        return pagine,num
+    
+def all_json(path_json, path_images):
+    list_json = os.listdir(path_json)
+    pagine = 0
+    num = 0
+    print(len(list_json))
+    for j in list_json:
+        json = path_json + j
+        #print(j)
+        name = j.replace('.json', '')
+        path_image = path_images + name +'/'
+        image = path_image + name 
+        #print(path_images)
+        folder = "C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+        pagine,num = get_data(json, image, folder, pagine, name,num)
+        
+    print('TOTALE', pagine,num)
 
 def get_norm_box(width, l, height):
     norm_box = [] 
@@ -88,6 +205,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Create event frame")
     parser.add_argument("--video", dest="video", default=None, help="Path of the video")
     args = parser.parse_args()
-    path_json = "dataset/train.json"
-    folder = "C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
-    get_data(path_json, folder)
+   # path_json = "dataset/train.json"
+    path_json = "HRDS/test/"
+    path_images = "HRDS/images/"
+    print(path_json)
+    all_json(path_json, path_images)
+    #folder = "C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+    #get_data(path_json, folder)
