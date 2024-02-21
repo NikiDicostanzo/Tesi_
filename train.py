@@ -30,21 +30,22 @@ def model_train(graph):
     model = Model(input, hidden , out_features).to(device)
     opt = torch.optim.Adam(model.parameters())
 
-    for epoch in range(1000):
-        _, out = model(graph, node_features)   
+    for epoch in range(300):
+        logit = model(graph, node_features)   
         #print(out)
         #pred  = predict_class(logit, threshold=0.5)
         #print(pred)  
         #pred =  F.log_softmax(scores, dim=1)#torch.max(logit, dim=1)
-        pred = out.argmax(dim=1)
+        #pred = out.argmax(dim=1)
         #print(out.argmax(dim=1))
-        loss = ((out - edge_label) ** 2).mean()
+        loss = F.cross_entropy(logit, edge_label.squeeze())
+        #loss = ((out - edge_label) ** 2).mean()
         opt.zero_grad()
         loss.backward()
         opt.step()
         
         #acc = evaluate(model, graph, node_features, edge_label)
-        acc = accuracy(pred, edge_label)
+        acc = accuracy(logit, edge_label)
         if epoch % 10 == 0:
            # print(epoch, loss.item(), acc)
              print('Epoch {:05d} | Loss {:.4f} | Accuracy w/ Validation data set {:.4f}'
@@ -79,12 +80,13 @@ def accuracy(indices, labels):
     #_, indices = torch.max(logits, dim=1)
     if labels.dim() >  1:
         labels = labels.squeeze()
-
-    indices = indices.long()
-    labels = labels.long()
-   # print(indices.shape, labels.shape)
+    #indices = torch.sigmoid(indices)
+    indices = indices.argmax(dim=1)
+    #indices = indices.long()
+    #labels = labels.long()
+    #print(indices.shape, labels.shape)
     correct = torch.sum(indices == labels)
-    return correct.item() / len(labels)
+    return correct.item() *1.0/ len(labels)
     
 # def accuracy(pred_y, y):
 #     """Calculate accuracy."""
@@ -101,11 +103,11 @@ def evaluate(model, graph, features, labels):
     
 
 def main():
-    bg= get_one_g()#get_graphs()
+    #bg= get_one_g()#get_graphs()
 
-    #graph_train = get_graphs()
-    #bg = dgl.batch(graph_train)
-    #bg = bg.int().to(device)
+    graph_train = get_graphs()
+    bg = dgl.batch(graph_train)
+    bg = bg.int().to(device)
     
     model_train(bg)
 
