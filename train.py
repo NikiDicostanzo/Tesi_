@@ -19,6 +19,25 @@ def model_train(graph):
     print(graph)
 
     #torch.Size([902, 4]) torch.Size([902, 2]) torch.Size([902])
+    node_features, input, edge_label = get_nfeatures(graph)
+    # in_feature = data.node_num_classes
+    out_features = 2 
+    hidden = 20
+    model = Model(input, hidden , out_features)
+    opt = torch.optim.Adam(model.parameters())
+
+    for epoch in range(100):
+        _, pred = model(graph, node_features)         
+        loss = ((pred - edge_label) ** 2).mean()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+        #print(loss.item())
+        if(epoch % 10 == 0):
+            print(f'Epoch {epoch:>3} | Train Loss: {loss:.3f}')
+
+def get_nfeatures(graph):
+    #labels_node = 
     page = graph.ndata['page'].float().unsqueeze(-1)
     centroids = graph.ndata['centroids'] 
     bb = graph.ndata['bb']    
@@ -26,28 +45,12 @@ def model_train(graph):
     # Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
     node_features = torch.cat([page, centroids], dim=-1)
     node_features = torch.cat([node_features, bb], dim=-1)
-    print(node_features)
+    #print(node_features)
 
     input = node_features.shape[1]
-    print(input)
-
-    edge_label = graph.edata['label']
-    print(bb.shape, centroids.shape, page.shape)
-    # in_feature = data.node_num_classes
-    out_features = 2 
-    hidden = 20
-    #model = Model(graph.num_nodes, hidden , out_features)
-
-    model = Model(input, 32,5)
-    edge_label = edge_label.unsqueeze(-1)
-    opt = torch.optim.Adam(model.parameters())
-    for epoch in range(10):
-        pred = model(graph, node_features)         
-        loss = ((pred - edge_label) ** 2).mean()
-        opt.zero_grad()
-        loss.backward()
-        opt.step()
-        print(loss.item())
+    edge_label = graph.edata['label'].unsqueeze(-1)
+    #print(bb.shape, centroids.shape, page.shape)
+    return node_features,input,edge_label
 
 def main():
     graph = get_one_g()#get_graphs()
