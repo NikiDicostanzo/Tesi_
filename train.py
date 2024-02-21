@@ -31,18 +31,31 @@ def model_train(graph):
     opt = torch.optim.Adam(model.parameters())
 
     for epoch in range(1000):
-        _, pred = model(graph, node_features)         
-        loss = ((pred - edge_label) ** 2).mean()
+        _, out = model(graph, node_features)   
+        #print(out)
+        #pred  = predict_class(logit, threshold=0.5)
+        #print(pred)  
+        #pred =  F.log_softmax(scores, dim=1)#torch.max(logit, dim=1)
+        pred = out.argmax(dim=1)
+        #print(out.argmax(dim=1))
+        loss = ((out - edge_label) ** 2).mean()
         opt.zero_grad()
         loss.backward()
         opt.step()
         
         #acc = evaluate(model, graph, node_features, edge_label)
-        #acc2 = accuracy(pred, edge_label)
+        acc = accuracy(pred, edge_label)
         if epoch % 10 == 0:
-            print(epoch, loss.item())
-            # print('Epoch {:05d} | Loss {:.4f} | Accuracy w/ Validation data set {:.4f}|{:.4f} '
-            #       .format(epoch, loss.item(), acc, acc2))
+           # print(epoch, loss.item(), acc)
+             print('Epoch {:05d} | Loss {:.4f} | Accuracy w/ Validation data set {:.4f}'
+                   .format(epoch, loss.item(), acc))
+
+
+
+def predict_class(pred_scores, threshold=0.5):
+    probabilities = torch.sigmoid(pred_scores)
+    pred = torch.argmax(probabilities, dim=1)
+    return pred.float() #(probabilities > threshold).int()
 
 def get_nfeatures(graph):
     #labels_node = 
@@ -53,12 +66,29 @@ def get_nfeatures(graph):
     # Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
     node_features = torch.cat([page, centroids], dim=-1)
     node_features = torch.cat([node_features, bb], dim=-1)
+
+    node_features = node_features.to(device)
     #print(node_features)
 
     input = node_features.shape[1]
     edge_label = graph.edata['label'].unsqueeze(-1)
     #print(bb.shape, centroids.shape, page.shape)
     return node_features,input,edge_label
+
+def accuracy(indices, labels):
+    #_, indices = torch.max(logits, dim=1)
+    if labels.dim() >  1:
+        labels = labels.squeeze()
+
+    indices = indices.long()
+    labels = labels.long()
+   # print(indices.shape, labels.shape)
+    correct = torch.sum(indices == labels)
+    return correct.item() / len(labels)
+    
+# def accuracy(pred_y, y):
+#     """Calculate accuracy."""
+#     return ((pred_y == y).sum() / len(y)).item()
 
 # evaluate model by accuracy
 def evaluate(model, graph, features, labels):
@@ -69,16 +99,13 @@ def evaluate(model, graph, features, labels):
         correct = torch.sum(indices == labels)
         return correct.item() * 1.0 / len(labels)
     
-def accuracy(pred_y, y):
-    """Calculate accuracy."""
-    return ((pred_y == y).sum() / len(y)).item()
 
 def main():
-    #graph = get_one_g()#get_graphs()
+    bg= get_one_g()#get_graphs()
 
-    graph_train = get_graphs()
-    bg = dgl.batch(graph_train)
-    bg = bg.int().to(device)
+    #graph_train = get_graphs()
+    #bg = dgl.batch(graph_train)
+    #bg = bg.int().to(device)
     
     model_train(bg)
 
