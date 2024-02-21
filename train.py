@@ -17,20 +17,32 @@ from model import Model
 # Provo il modello su GT 
 def model_train(graph):
     print(graph)
-    node_features = graph.ndata['page'].float()
-    edge_label = graph.edata['label']
+
+    #torch.Size([902, 4]) torch.Size([902, 2]) torch.Size([902])
+    page = graph.ndata['page'].float().unsqueeze(-1)
+    centroids = graph.ndata['centroids'] 
+    bb = graph.ndata['bb']    
+
+    # Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
+    node_features = torch.cat([page, centroids], dim=-1)
+    node_features = torch.cat([node_features, bb], dim=-1)
     print(node_features)
+
+    input = node_features.shape[1]
+    print(input)
+
+    edge_label = graph.edata['label']
+    print(bb.shape, centroids.shape, page.shape)
     # in_feature = data.node_num_classes
     out_features = 2 
     hidden = 20
     #model = Model(graph.num_nodes, hidden , out_features)
-    inputs = node_features.unsqueeze(-1)
-    print(inputs)
-    model = Model(1, 32,5)
+
+    model = Model(input, 32,5)
     edge_label = edge_label.unsqueeze(-1)
     opt = torch.optim.Adam(model.parameters())
     for epoch in range(10):
-        pred = model(graph, inputs)         
+        pred = model(graph, node_features)         
         loss = ((pred - edge_label) ** 2).mean()
         opt.zero_grad()
         loss.backward()
