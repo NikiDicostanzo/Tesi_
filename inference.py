@@ -63,44 +63,32 @@ def main():
     page = graph_test.ndata['page'].tolist()
     bb = graph_test.ndata['bb'].tolist()
     centroids = graph_test.ndata['centroids'].tolist() # centroide del nodo i-esimo
-    #print(centroids)
     print(len(edges), len(page), len(image_list))
 
     new_cent = []
     new_bb = []
-    #count per quando cambio doc
-    # HRDS/images/list[count]/list[count]_page[u]
-    count = 0 # primo doc
-    # array = page
-    # for i in reversed(range(1, len(array))):
-    #     # Se l'elemento corrente è uguale all'elemento precedente, lo rimuoviamo
-    #     if array[i] == array[i-1]:
-    #         del array[i]
-    # print(array)
-    new_page = False
+
     check_folder  = True
     if not os.path.exists('savepred/'):
          os.makedirs('savepred')
-
-    save = False
-    new = True
+    
+    count = 0 # primo doc
     num_page = 0
-    for i in range(len(edges)):#- 811034):
+    for i in range(len(edges)):
         u, v = edges[i]
-        if 5250 < i < 5270:
-            print(page[u], page[v])
+        #print(page[u], page[v])
+        
         #documento count (es. 10, poi trova 0)
         if i > 0 and page[edges[i-1][1]] > page[v] and page[u] == 0:
-            #print('qui',page[edges[i-1][0]], page[edges[i-1][1]],',', page[u], page[v], count)
             count = count + 1
             check_folder  = os.path.exists(path_image + image_list[count] + '/')
-            new_page = True
-            num_page = 0
+            num_page = 0 # nuovo documento
+            new_cent = []
         if check_folder:
             if page[u] == page[v]:  # Se la pagina è la stessa, aggiungi i centroidi e le bb
                 new_cent.append(tuple([centroids[u], centroids[v]]))
-                save = True
-            elif page[u] == num_page and page[u]!= page[v]:# and i>0 and page[edges[i-1][0]]<=page[u]:# and current_page == page[u] :
+
+            elif page[u] == num_page and page[u]!= page[v]:
                 # Devi spostare i centroidi di v e aggiungere tutte le altre informazioni
                 k = i + 1
                 #print('wui')
@@ -109,7 +97,6 @@ def main():
                 image1, width = get_name(path_image, image_list, page, count, u)
                 image2, _ = get_name(path_image, image_list, page, count, v)
                 while k < len(edges) and page[u] < page[v1] <= page[u] + 1:
-                   # print(u, v, '|', u1, v1, '|', len(edges), k)
                     if page[u1] != page[v1]:
                         new_cent.append(tuple([[centroids[u1][0], centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
                     else:
@@ -117,24 +104,19 @@ def main():
                     k = k +  1
                     if k < len(edges):
                         u1, v1 = edges[k]
-            #  print( page[edges[k][0]], page[edges[k][1]], page[edges[k+1][0]])
                 
-                
-                path_save_conc = 'savepred/' + image_list[count]+ '_' + str(page[u]) +'_'+ str(page[v])+'_'+str(i)+'.jpg'
-                con_img, con_draw = get_concat_h(image1, image2)#.save(path_save_conc)
-                index = i + 1
-               # print(len(new_cent))
-                for cu, cv in new_cent:
-                    index = index + 1
-                    con_draw.line([tuple(cu), tuple(cv)], fill='blue', width=1)
-                con_img.save(path_save_conc)
-                if 5250 < i < 5270:
-                  print('Save', page[u], page[v], '|', i, num_page, '|', path_save_conc)
-               # break
+                plot_edge(image_list, i, page, new_cent, count, u, v, image1, image2)
                 new_cent = []
-                save = False
-                new = True
-                num_page =num_page + 1
+                num_page =num_page + 1 
+
+def plot_edge(image_list, i, page, new_cent, count, u, v, image1, image2):
+    path_save_conc = 'savepred/' + image_list[count]+ '_' + str(page[u]) +'_'+ str(page[v])+'.jpg'
+    con_img, con_draw = get_concat_h(image1, image2)#.save(path_save_conc)
+    index = i + 1
+    for cu, cv in new_cent:
+        index = index + 1
+        con_draw.line([tuple(cu), tuple(cv)], fill='blue', width=1)
+    con_img.save(path_save_conc)# cambiare pagina
  
             
 def get_concat_h(im1, im2):
