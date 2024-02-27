@@ -65,17 +65,26 @@ def get_graph(json_file):
         bounding_boxes, page,relation,parent, labels  = get_info_json(data)
         
         centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in bounding_boxes ]
+       
         #distances = cdist(centroids, centroids)  # Matrice distanza con ogni punto
 
-        i, j, labels = get_edge_node(data, bounding_boxes, page, relation, parent)
+        i, j, labels_edge = get_edge_node(data, bounding_boxes, page, relation, parent)
         
         # Graph
         g = dgl.graph((i, j))
-        g.edata['label'] = th.tensor(labels)
+        g.edata['label'] = th.tensor(labels_edge)
+
+        #Node Features
         g.ndata['centroids'] = th.tensor(centroids)
         g.ndata['bb'] = th.tensor(bounding_boxes)
-
-        g = dgl.add_self_loop(g)
+        g.ndata['page'] = th.tensor(page)
+        # One hot encoder 
+        #g.ndata['labels'] = th.tensor(labels) 
+        #print(dgl.has_self_loop(g))
+        #g = dgl.remove_self_loop(g)
+       # g = dgl.add_self_loop(g) # PEr quando usi Gatv2!!
+       # g.set_batch_num_nodes(g.batch_num_nodes())
+       # g.set_batch_num_edges(g.batch_num_edges())
         #num_edges = g.number_of_edges()
     return g
 
@@ -85,8 +94,8 @@ def get_one_g():
     return g
 
 
-def get_g():
-    path_json = 'HRDS/train/'
+def get_graphs(type):
+    path_json = 'HRDS/' + type +'/'
     list_j = os.listdir(path_json)
     all_graph = []
     for j in list_j:
@@ -97,7 +106,7 @@ def get_g():
     return all_graph
    
 if __name__ == '__main__':
-    get_g()
+    get_graphs()
 
 '''
     {'author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 

@@ -4,6 +4,15 @@ import argparse
 import os
 from PIL import Image, ImageDraw as D
 
+'''
+    {'author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
+    'fig', 'mail', 'secx', 'title', 
+    'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili'}
+
+{meta, contain, connect, equality}
+
+'''
+
 ### DOC
 # TRAIN: 394 pdf => 8550  %65 -> 1318-
     # TEST:  301 pdf => 4634  %35
@@ -13,8 +22,10 @@ from PIL import Image, ImageDraw as D
 # TRAIN: 900 pdf => 8286  %65 -> 1318-
     # TEST:  100 pdf => 938  %35
     # VAL: fino a doc 62 =>    1331
-
-
+def create_folder(folder):
+    if not os.path.exists(folder):
+         os.makedirs(folder)
+    
 # x0, y0, x1, y1
 def create_ann(box, size_w, size_h):
     center = [((box[2] + box[0]) / 2) / size_w, ((box[3] + box[1]) / 2) / size_h]
@@ -99,13 +110,19 @@ def get_data(path_json, path_image, folder, pagine, name,num):
         num+=1
         #print(pagine)
         #print(num)
-        # if pagine < 100:
-        #     folder_dest = folder + 'val/'
-        #     #print('Doc VAL:', pagine)
-        # else:
-        #     folder_dest = folder + 'train/'
-        #     #print('Doc TRAIN: ', pagine)  
-        folder_dest = folder + 'test/'
+        if pagine < 100:
+             folder_dest = folder + 'val/'
+             print('Doc VAL:', pagine)
+        else:
+            folder_dest = folder + 'train/'
+            print('Doc TRAIN: ', pagine)  
+       # folder_dest = folder + 'test/'
+        create_folder(folder_dest)
+        save_lab_path = folder_dest + 'labels/'
+        create_folder(save_lab_path)
+        save_im_path  = folder_dest + 'images/'
+        create_folder(save_im_path)
+
         count_page = 0
         write = []
         for index in range(len(data)) :
@@ -113,16 +130,16 @@ def get_data(path_json, path_image, folder, pagine, name,num):
             #se cambia pagina salvo
             if index > 0 and data[index]['page'] != data[index-1]['page']: 
                 
-                save_lab = folder_dest + 'labels/' + name_labels
+                save_lab = save_lab_path + name_labels
+                
                # print(save_lab)
                 with open(save_lab, 'w') as f:
                     for i in write:
                         f.write(i)
                         f.write('\n')
-                save_im = folder_dest + 'images/' + name_image
+                save_im = save_im_path + name_image
                 image.save(save_im) 
                 write = []
-
 
             page = data[index]['page']
             im = path_image + '_' + str(page) + '.jpg'
@@ -135,27 +152,30 @@ def get_data(path_json, path_image, folder, pagine, name,num):
             #class_lab = ''
             # Classes 
             """ names:
-            0: title
-            1: sec1
-            2: sec2
-            3: sec3
-            4: fstline
+            0: sec1
+            1: sec2
+            2: sec3
+            3: fstline
+            4: para
             5: equ
             6: tab
             7: fig
-            8: other """  
+            8: meta 
+            9: other
+            
+            """  
             # label_idx x_center y_center width height
             #   label_idx = is_title (0, 1)
             name_class = data[index]['class'] 
-            if name_class == 'title':
+            if name_class == 'sec1':
                 class_lab = '0'
-            elif name_class == 'sec1':
-                class_lab = '1'
             elif name_class == 'sec2':
-                class_lab = '2'
+                class_lab = '1'
             elif name_class == 'sec3':
-                class_lab = '3'
+                class_lab = '2'
             elif name_class == 'fstline':
+                class_lab = '3'
+            elif name_class == 'para':
                 class_lab = '4'
             elif name_class == 'equ':
                 class_lab = '5'
@@ -163,10 +183,11 @@ def get_data(path_json, path_image, folder, pagine, name,num):
                 class_lab = '6'
             elif name_class == 'fig':
                 class_lab = '7'
+            elif data[index]['is_meta'] == True:
+                class_lab = '8' 
             else:
-                class_lab = '8'
+                class_lab = '9'
             
-
             txt_data = create_ann(data[index]['box'], width, height)
           
             tmp = class_lab + ' ' + txt_data  
@@ -182,6 +203,7 @@ def all_json(path_json, path_images):
     pagine = 0
     num = 0
     print(len(list_json))
+    
     for j in list_json:
         json = path_json + j
         #print(j)
@@ -189,7 +211,7 @@ def all_json(path_json, path_images):
         path_image = path_images + name +'/'
         image = path_image + name 
         #print(path_images)
-        folder = "C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+        folder = "../data_yolo_new/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
         pagine,num = get_data(json, image, folder, pagine, name,num)
         
     print('TOTALE', pagine,num)
@@ -206,7 +228,7 @@ if __name__ == '__main__':
     parser.add_argument("--video", dest="video", default=None, help="Path of the video")
     args = parser.parse_args()
    # path_json = "dataset/train.json"
-    path_json = "HRDS/test/"
+    path_json = "HRDS/train/"
     path_images = "HRDS/images/"
     print(path_json)
     all_json(path_json, path_images)

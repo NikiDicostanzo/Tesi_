@@ -41,11 +41,8 @@ def get_images(type):
         image_list.append(name)
     print(len(image_list))
     return path_image, image_list
-        
 
-# ad ogni arco assegno quello predict
-def plot_graph():
-    ''
+
 def main():
     path_image, image_list = get_images('test')
     graph = get_graphs('test')
@@ -74,6 +71,7 @@ def main():
     
     count = 0 # primo doc
     num_page = 0
+    lab = []
     for i in range(len(edges)):
         u, v = edges[i]
         #print(page[u], page[v])
@@ -84,38 +82,50 @@ def main():
             check_folder  = os.path.exists(path_image + image_list[count] + '/')
             num_page = 0 # nuovo documento
             new_cent = []
+            lab = []
         if check_folder:
             if page[u] == page[v]:  # Se la pagina è la stessa, aggiungi i centroidi e le bb
                 new_cent.append(tuple([centroids[u], centroids[v]]))
-
+                lab.append(predictions[i])
             elif page[u] == num_page and page[u]!= page[v]:
                 # Devi spostare i centroidi di v e aggiungere tutte le altre informazioni
                 k = i + 1
-                #print('wui')
                 if k < len(edges):
                     u1, v1 = edges[k]
                 image1, width = get_name(path_image, image_list, page, count, u)
                 image2, _ = get_name(path_image, image_list, page, count, v)
+
+                # Plotto gli edge del 2 documento a dx
                 while k < len(edges) and page[u] < page[v1] <= page[u] + 1:
                     if page[u1] != page[v1]:
                         new_cent.append(tuple([[centroids[u1][0], centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
                     else:
                         new_cent.append(tuple([[centroids[u1][0] +  width, centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
+                    lab.append(predictions[k])
                     k = k +  1
                     if k < len(edges):
                         u1, v1 = edges[k]
-                
-                plot_edge(image_list, i, page, new_cent, count, u, v, image1, image2)
+                print(len(lab), len(new_cent))
+                plot_edge(image_list, page, new_cent, count, u, v, image1, image2, lab)
                 new_cent = []
+                lab = []
                 num_page =num_page + 1 
 
-def plot_edge(image_list, i, page, new_cent, count, u, v, image1, image2):
+def plot_edge(image_list, page, new_cent, count, u, v, image1, image2, lab):
     path_save_conc = 'savepred/' + image_list[count]+ '_' + str(page[u]) +'_'+ str(page[v])+'.jpg'
     con_img, con_draw = get_concat_h(image1, image2)#.save(path_save_conc)
-    index = i + 1
+    index = 0
     for cu, cv in new_cent:
+        
+        if lab[index] == 1:
+            color = 'blue'
+            wid = 2
+        else:
+            color = 'red'
+            wid = 1
+        
+        con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         index = index + 1
-        con_draw.line([tuple(cu), tuple(cv)], fill='blue', width=1)
     con_img.save(path_save_conc)# cambiare pagina
  
             

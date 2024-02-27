@@ -93,6 +93,7 @@ def marge_bb(bb, labels):
                 #####TODO Stessa classe
                 marge_box = True                    
             j +=1
+            # elfi # aggiugnere se si sopvrappongono e classi diverse di prendere quella con confidenza >
         if marge_box : 
             #if [x0,y0,x1,y1] not in tmp:
             tmp.append([x0,y0,x1,y1])   
@@ -127,8 +128,8 @@ def get_bb_merge(path_image, txt, path_save, detect):
             dst.save(path_save)
         else:
             image.save(path_save)
-    else:
-        image.show()
+    #else:
+    #    image.show()
     return new_bb, new_labels
 
 # Merge su tutte le immagini
@@ -143,17 +144,41 @@ def merge_all_image(folder, type_img):
     path_save = folder + 'merge/'
     create_folder(path_save)
 
+    path_json_save = folder + 'json_yolo/'
+    create_folder(path_json_save)
+    save_bb =[]
+
+    save_name = True
+    ind = 0
+    data = []
     for d in dir_list:
 
         path_image = path_images + d 
-        name = '.'.join(d.split('.')[0:len(d.split('.'))-1])
+        name = get_name(d)
         txt = path_txt + name + '.txt'
+        ap= name.split('_')
+        page = ap[len(ap)-1]
+
+        # se non appartengono allo stesso doc salvo precedenti
+        print(get_name(dir_list[ind-1])[:-2], name[:-2])
+        if ind > 0 and get_name(dir_list[ind-1])[:-2] != name[:-2]:
+            save_json = path_json_save + get_name(dir_list[ind-1])[:-2] + '.json' 
+            with open(save_json, 'w') as f:
+                json.dump(data, f, indent=4)
+            data = []
 
         detect = images_detect + name + type_img
-        
-        save_image = path_save + d        
-        new_bb, new_labels = get_bb_merge(path_image, txt, save_image, detect)
-        num +=1
+        save_image = path_save + d   #''
+          
+        new_bb, new_labels = get_bb_merge(path_image, txt, '', detect)
+        sorted_boxes = sort_bounding_boxes(new_bb, new_labels)
+        data = create_json(data, sorted_boxes, page)
+
+        ind = ind+1
+
+def get_name(d):
+    name = '.'.join(d.split('.')[0:len(d.split('.'))-1])
+    return name
 
 
 def sort_data(bb, labels, index):
@@ -175,8 +200,43 @@ def get_concat_h(im1, im2):
 def create_folder(file_path):
     if not os.path.exists(file_path):
         os.makedirs(file_path)
-    
-   
+
+# Funzione per determinare la posizione orizzontale di una bounding box
+def get_position(x0):
+    if x0 <  250:
+        return "sx"
+    else:
+        return "dx"
+
+# Funzione per ordinare le bounding box alla fine!
+def sort_bounding_boxes(boxes, labels):
+    box_label_pairs = list(zip(boxes, labels))
+    # Ordina prima le bounding box e poi le labels associate
+    sorted_box_label_pairs = sorted(box_label_pairs, key=lambda pair: (1 if get_position(pair[0][0]) == "sx" else  2, pair[0][1]))
+    # Ricostruisce l'ordine originale delle labels
+    return sorted_box_label_pairs
+
+alab = ["sec1", "sec2","sec3","fstline","para","equ","tab","fig","meta","other"] # New 9
+#alab = ["title", "sec1", "sec2","sec3","fstline","equ","tab","fig","other"]
+def create_json(data, sorted_boxes, page):
+    #text
+    for i in range(len(sorted_boxes)):
+        dict = {"box": sorted_boxes[i][0], 
+                "class": alab[sorted_boxes[i][1]],
+                "page": page}
+       
+        data.append(dict)    
+    return data
+        
+    ''
+    # devo salvare le bb trovate con la classe
+    # per vederlo plotto 2 imm .con id ..
+    # è come marge ma assegno solo id 
+
+    #qui salvo solo ( no confronto con gt)
+    #with open(json_gt, errors="ignore") as json_file:
+    #    data_gt = json.load(json_file)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="...")
    # parser.add_argument("--video", dest="video", default=None, help="Path of the video")
@@ -184,5 +244,5 @@ if __name__ == '__main__':
     #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
     #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
 
-    folder = 'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
-    merge_all_image(folder, '.jpg')
+    folder = 'exp_yolo_9/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
+    merge_all_image(folder, '.png')

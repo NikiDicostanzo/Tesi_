@@ -3,8 +3,11 @@ from create_graphGT import get_one_g, get_graphs
 import os
 import torch.nn.functional as F
 import dgl
+from sklearn.model_selection import train_test_split
 
+#from Tesi_.model2_git import EdgeClassifier
 from model import Model
+from model3 import Model3
 
 # Eseguire train del modello (devo crearlo )
 # Batch dei grafi !!
@@ -19,44 +22,34 @@ from model import Model
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def model_train(graph):
+def model_train(graph, val_graph, name_model):
     print(graph)
 
-    #torch.Size([902, 4]) torch.Size([902, 2]) torch.Size([902])
     node_features, input, edge_label = get_nfeatures(graph)
-    # in_feature = data.node_num_classes
-    out_features = 2 
+    #node_features_val, input_val, edge_label_val = get_nfeatures(val_graph)
+    
+    print('node_features:', node_features.shape, '|', 'input', input, '|','edge_label', edge_label.shape)
+    out_features = 2
     hidden = 20
-    model = Model(input, hidden , out_features).to(device)
+    #model = EdgeClassifier(graph.num_edges(), 1, 0.2, node_features, 300, hidden, device, False)
+    model = Model3(input, hidden , out_features).to(device)
     opt = torch.optim.Adam(model.parameters())
 
-    for epoch in range(300):
+    for epoch in range(500):
         logit = model(graph, node_features)   
-        #print(out)
-        #pred  = predict_class(logit, threshold=0.5)
-        #print(pred)  
-        #pred =  F.log_softmax(scores, dim=1)#torch.max(logit, dim=1)
-        #pred = out.argmax(dim=1)
-        #print(out.argmax(dim=1))
+        print(logit, '/n',edge_label.squeeze())
         loss = F.cross_entropy(logit, edge_label.squeeze())
-        #loss = ((out - edge_label) ** 2).mean()
+
         opt.zero_grad()
         loss.backward()
         opt.step()
         
-        #acc = evaluate(model, graph, node_features, edge_label)
         acc = accuracy(logit, edge_label)
         if epoch % 10 == 0:
-           # print(epoch, loss.item(), acc)
              print('Epoch {:05d} | Loss {:.4f} | Accuracy w/ Validation data set {:.4f}'
                    .format(epoch, loss.item(), acc))
-
-
-
-def predict_class(pred_scores, threshold=0.5):
-    probabilities = torch.sigmoid(pred_scores)
-    pred = torch.argmax(probabilities, dim=1)
-    return pred.float() #(probabilities > threshold).int()
+    # Salva il modello addestrato
+    torch.save(model.state_dict(), name_model)
 
 def get_nfeatures(graph):
     #labels_node = 
@@ -65,56 +58,73 @@ def get_nfeatures(graph):
     bb = graph.ndata['bb']    
 
     # Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
-    node_features = torch.cat([page, centroids], dim=-1)
-    node_features = torch.cat([node_features, bb], dim=-1)
+    node_features = torch.cat([page, centroids, bb], dim=-1)
+    #node_features = torch.cat([page, centroids], dim=-1)
+    #node_features = torch.cat([node_features, bb], dim=-1)
 
     node_features = node_features.to(device)
-    #print(node_features)
+    print('node_feature:', node_features.shape)
 
     input = node_features.shape[1]
     edge_label = graph.edata['label'].unsqueeze(-1)
+    #edge_label = edge_label.squeeze().long()
     #print(bb.shape, centroids.shape, page.shape)
     return node_features,input,edge_label
 
 def accuracy(indices, labels):
-    #_, indices = torch.max(logits, dim=1)
     if labels.dim() >  1:
         labels = labels.squeeze()
-    #indices = torch.sigmoid(indices)
     indices = indices.argmax(dim=1)
-    #indices = indices.long()
-    #labels = labels.long()
-    #print(indices.shape, labels.shape)
     correct = torch.sum(indices == labels)
     return correct.item() *1.0/ len(labels)
-    
-# def accuracy(pred_y, y):
-#     """Calculate accuracy."""
-#     return ((pred_y == y).sum() / len(y)).item()
 
-# evaluate model by accuracy
-def evaluate(model, graph, features, labels):
+def model_test(model_name):
+    graph_test = get_graphs('test')
+    
+    graph_test = dgl.batch(graph_test) # num_nodes=725391, num_edges=811734,
+    graph_test = graph_test.int().to(device)
+
+    node_features, input, edge_label = get_nfeatures(graph_test)
+
+    out_features = 2 
+    hidden = 20
+
+    # Carica il modello addestrato
+    model = Model3(input, hidden , out_features).to(device)
+    model.load_state_dict(torch.load(model_name))
+
+    # Imposta il modello in modalità di valutazione
     model.eval()
+
+        # Fai le previsioni sul set di test
     with torch.no_grad():
-        logits, _ = model(graph, features)
-        _, indices = torch.max(logits, dim=1)
-        correct = torch.sum(indices == labels)
-        return correct.item() * 1.0 / len(labels)
-    
+        logits = model(graph_test, node_features)
+        _, predictions = torch.max(logits, dim=1)
 
-def main():
+    # Confronta le previsioni con le etichette di classe effettive
+    
+    acc = accuracy(logits, edge_label)
+
+    print('Test Accuracy: {:.4f}'.format(acc)) # Test Accuracy: 0.9009
+    
+def main_train():
     #bg= get_one_g()#get_graphs()
-
-    graph_train = get_graphs()
-    bg = dgl.batch(graph_train)
-    bg = bg.int().to(device)
+    train_graphs = get_graphs('train')
+  #  train_graphs, val_graphs = train_test_split(graph_train, test_size=0.01)
     
-    model_train(bg)
+    bg_train = dgl.batch(train_graphs) # num_nodes=725391, num_edges=811734,
+    bg_train = bg_train.int().to(device)
+
+    bg_val = ''
+  #  bg_val = dgl.batch(val_graphs) # num_nodes=7523, num_edges=8389,
+  #  bg_val = bg_val.int().to(device)
+  #  print(bg_train, '\n', bg_val)
+
+    model_train(bg_train, bg_val, 'model_gat.pth')
 
 if __name__ == '__main__':
-    main()
-    
-   # print(get_one_g())
+    main_train()
+    #model_test('model1.pth')
     
 """ 
 Graph(num_nodes=732914, num_edges=820123,
