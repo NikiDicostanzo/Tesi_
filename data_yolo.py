@@ -3,7 +3,7 @@ import json
 import argparse
 import os
 from PIL import Image, ImageDraw as D
-
+### METTERE UTLIMA PAGINA RIVEDEREE
 '''
     {'author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
     'fig', 'mail', 'secx', 'title', 
@@ -110,13 +110,13 @@ def get_data(path_json, path_image, folder, pagine, name,num):
         num+=1
         #print(pagine)
         #print(num)
-        if pagine < 100:
-             folder_dest = folder + 'val/'
-             print('Doc VAL:', pagine)
-        else:
-            folder_dest = folder + 'train/'
-            print('Doc TRAIN: ', pagine)  
-       # folder_dest = folder + 'test/'
+        # if pagine < 100:
+        #      folder_dest = folder + 'val/'
+        #      print('Doc VAL:', pagine)
+        # else:
+        #     folder_dest = folder + 'train/'
+        #     print('Doc TRAIN: ', pagine)  
+        folder_dest = folder + 'test/'
         create_folder(folder_dest)
         save_lab_path = folder_dest + 'labels/'
         create_folder(save_lab_path)
@@ -125,6 +125,7 @@ def get_data(path_json, path_image, folder, pagine, name,num):
 
         count_page = 0
         write = []
+        print(data)
         for index in range(len(data)) :
 
             #se cambia pagina salvo
@@ -228,7 +229,7 @@ if __name__ == '__main__':
     parser.add_argument("--video", dest="video", default=None, help="Path of the video")
     args = parser.parse_args()
    # path_json = "dataset/train.json"
-    path_json = "HRDS/train/"
+    path_json = "HRDS/test/"
     path_images = "HRDS/images/"
     print(path_json)
     all_json(path_json, path_images)
