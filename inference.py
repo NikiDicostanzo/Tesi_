@@ -5,9 +5,22 @@ import os
 import dgl
 from PIL import Image, ImageDraw as D
 from train import get_nfeatures
+
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def inference(graph_test):
+def get_bb(bb, w, h):
+    x0 = bb[0] * w
+    y0 = bb[1] * h
+    x1 = bb[2] * w
+    y1 = bb[3] * h
+    return x0, y0, x1, y1
+
+def get_centr(centr, w, h):
+    x = centr[0] * w
+    y = centr[1] * h
+    return x, y
+
+def inference(graph_test, model_name):
     node_features, input, edge_label = get_nfeatures(graph_test)
 
     out_features = 2 
@@ -15,7 +28,7 @@ def inference(graph_test):
 
     # Carica il modello addestrato
     model = Model(input, hidden , out_features).to(device)
-    model.load_state_dict(torch.load('model.pth'))
+    model.load_state_dict(torch.load(model_name))
 
     # Imposta il modello in modalità di valutazione
     model.eval()
@@ -26,8 +39,6 @@ def inference(graph_test):
         _, predictions = torch.max(logits, dim=1)
     return predictions
 
-    # plottare bb, linee
-    # quando pagina è 0 nuovo documento 
 def get_images(type):
     path_json = 'HRDS/' + type +'/'
     path_image= 'HRDS/images/'
@@ -36,46 +47,42 @@ def get_images(type):
     image_list = []
     for i in list_j:
         name  = i.replace('.json','')
-       # check = os.path.exists(path_json + name)
-        #if check:
         image_list.append(name)
-    print(len(image_list))
     return path_image, image_list
 
-
-def main():
+def main(folder_save, model_name):
     path_image, image_list = get_images('test')
-    graph = get_graphs('test')
+    graph, page, centroids_norm_, text = get_graphs('test') 
     graph_test = dgl.batch(graph) # num_nodes=725391, num_edges=811734,
     graph_test = graph_test.int().to(device)
 
-    predictions = inference(graph_test)
-    
-    print(graph_test)
-    print(len(predictions))
+   # predictions = graph_test.edata['label'] GT
+   
+    predictions = inference(graph_test,model_name)
     i,j = graph_test.edges()
-
-    # stesso indice !!! 
+ 
     edges = list(zip(i.tolist(), j.tolist()))
-    page = graph_test.ndata['page'].tolist()
-    bb = graph_test.ndata['bb'].tolist()
-    centroids = graph_test.ndata['centroids'].tolist() # centroide del nodo i-esimo
-    print(len(edges), len(page), len(image_list))
+    bb_norm = graph_test.ndata['bb'].tolist()
+    bb = [get_bb(box, 596, 842) for box in bb_norm ]
+
+  #  page = graph_test.ndata['page'].tolist()
+    
+    centroids_norm = graph_test.ndata['centroids'].tolist() # centroide del nodo i-esimo
+    centroids =  [get_centr(cent, 596, 842) for cent in centroids_norm ]
 
     new_cent = []
     new_bb = []
+    lab = []
+    texts = []
 
     check_folder  = True
-    if not os.path.exists('savepred/'):
-         os.makedirs('savepred')
+    check_path(folder_save)
     
     count = 0 # primo doc
     num_page = 0
-    lab = []
     for i in range(len(edges)):
         u, v = edges[i]
         #print(page[u], page[v])
-        
         #documento count (es. 10, poi trova 0)
         if i > 0 and page[edges[i-1][1]] > page[v] and page[u] == 0:
             count = count + 1
@@ -83,18 +90,22 @@ def main():
             num_page = 0 # nuovo documento
             new_cent = []
             lab = []
+            texts = []
         if check_folder:
+            
             if page[u] == page[v]:  # Se la pagina è la stessa, aggiungi i centroidi e le bb
                 new_cent.append(tuple([centroids[u], centroids[v]]))
                 lab.append(predictions[i])
+               # texts.append([text[u], text[v]]) # solo per controllo -
             elif page[u] == num_page and page[u]!= page[v]:
-                # Devi spostare i centroidi di v e aggiungere tutte le altre informazioni
-                k = i + 1
+               # if  image_list[count] == 'ACL_2020.acl-main.99' and page[u] == 2:
+               #  print('uuuu', i, '|', text[u], '|', text[v], 'I',len(lab), 'page',page[u], page[v] )
+                k = i
                 if k < len(edges):
                     u1, v1 = edges[k]
                 image1, width = get_name(path_image, image_list, page, count, u)
                 image2, _ = get_name(path_image, image_list, page, count, v)
-
+                
                 # Plotto gli edge del 2 documento a dx
                 while k < len(edges) and page[u] < page[v1] <= page[u] + 1:
                     if page[u1] != page[v1]:
@@ -102,33 +113,38 @@ def main():
                     else:
                         new_cent.append(tuple([[centroids[u1][0] +  width, centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
                     lab.append(predictions[k])
+                    #texts.append([text[u1], text[v1]])
+        
                     k = k +  1
                     if k < len(edges):
                         u1, v1 = edges[k]
-                print(len(lab), len(new_cent))
-                plot_edge(image_list, page, new_cent, count, u, v, image1, image2, lab)
+                
+                plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, lab, folder_save)
                 new_cent = []
                 lab = []
+                texts = []
                 num_page =num_page + 1 
 
-def plot_edge(image_list, page, new_cent, count, u, v, image1, image2, lab):
-    path_save_conc = 'savepred/' + image_list[count]+ '_' + str(page[u]) +'_'+ str(page[v])+'.jpg'
-    con_img, con_draw = get_concat_h(image1, image2)#.save(path_save_conc)
+def check_path(folder_save):
+    if not os.path.exists(folder_save):
+         os.makedirs(folder_save)
+
+def plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, lab, folder_save):
+    path_save_conc = folder_save + image_list[count]+ '_' + str(page[u]) +'_'+ str(page[v])+'.jpg'
+    con_img, con_draw = get_concat_h(image1, image2)
     index = 0
     for cu, cv in new_cent:
-        
         if lab[index] == 1:
             color = 'blue'
             wid = 2
+            con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         else:
             color = 'red'
             wid = 1
-        
-        con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+        #con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         index = index + 1
-    con_img.save(path_save_conc)# cambiare pagina
+    con_img.save(path_save_conc)
  
-            
 def get_concat_h(im1, im2):
     dst = Image.new('RGB', (im1.width + im2.width, im1.height))
     dst.paste(im1, (0, 0))
@@ -153,7 +169,7 @@ cambio doc :
 
 '''
 
-
-
 if __name__ == '__main__':
-    main()
+    folder_save = 'sp_bb_lab_relnoabs_cent/'
+    model_name = 'model__bb_lab_relnoabs_cent.pth'
+    main(folder_save,model_name)

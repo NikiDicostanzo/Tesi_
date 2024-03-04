@@ -36,11 +36,11 @@ def get_nodes(bounding_boxes, labels_yolo, page):
     # considerare i k piu vicini !! 
     # Dati sono in ordine di lettura
 
-    for index_i in range(len(centroids)):
+    for index_i in range(len(bounding_boxes)):
         k = 1
         index_j = index_i + k
         # voglio solo i k + vicini
-        while k < 3 and index_j < len(centroids):
+        while k < 3 and index_j < len(bounding_boxes):
             distances =  min_disty_vert(bounding_boxes[index_i], bounding_boxes[index_j])
         
             if page[index_j] == page[index_i]: 
@@ -50,20 +50,23 @@ def get_nodes(bounding_boxes, labels_yolo, page):
                     labels.append(1)
                 else :  
                     labels.append(0)
-            else:
+            else:#if labels_yolo[index_j] != 'meta' and labels_yolo[index_j] != 'tab':
+                # se ho : meta, tab, fig 
                 if index_i>0:
                     new_i = index_i - 1
                     
                     while labels_yolo[new_i] == 'meta': 
-                        print(index_i, labels_yolo[new_i] )
+                        #print(index_i, labels_yolo[new_i] )
                         new_i = new_i - 1
 
                     j_node.append(index_j)
                     i_node.append(new_i)
                     if labels_yolo[new_i] == labels_yolo[index_j]:
                         labels.append(1)
+                        break
                     else :  
                         labels.append(0)
+                        
                        
             k=k+1
             index_j = index_i + k
@@ -135,16 +138,20 @@ def my_graph():
 
 def get_info_json(data):
     bounding_boxes = [item['box'] for item in data] # salvo tutte le bb delle miei pagine
-    page = [item['page'] for item in data] 
+    page = [int(item['page']) for item in data] 
     labels = [item['class'] for item in data]
- 
     return bounding_boxes, page,labels
 
 def get_name(path_image, name, page, u):
     name_img = path_image + name + '_' + str(page[u]) +'.png'
-    image = Image.open(name_img)
-    #draw = D.Draw(image)
-    return image, image.width 
+    if os.path.exists(name_img):
+        image = Image.open(name_img)
+        wid = image.width 
+    else:
+        image = None
+        wid = 0
+        #draw = D.Draw(image)
+    return image, wid
 
 def get_concat_h(im1, im2):
     dst = Image.new('RGB', (im1.width + im2.width, im1.height))
@@ -170,89 +177,115 @@ def plot_edge(name, page, new_cent, u, v, image1, image2, lab, index):
         
     con_img.save(path_save_conc)# cambiare pagina
 
+def plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, num_page, lab, path_new_im, bounding_boxes, page, labels_yolo, centroids, labels, i, j, name, image):
+    for b in range(len(bounding_boxes)):
+        p = page[b]
+        color = get_color(labels_yolo[b])
+        if b>0 and p != page[b-1]: #cambia pagina #salvo
+            save_im = path_new_im + name + '_' + str(page[b-1]) + '.png'
+            image.save(save_im)
+            image, _ = get_name(path_image, name, page, b)
+            draw = ImageDraw.Draw(image)
+        elif b == len(bounding_boxes)-1:
+            save_im = path_new_im + name + '_' + str(page[b]) + '.png'
+            image.save(save_im)
+        draw.rectangle(bounding_boxes[b], outline = color) 
+                
+    save = True
+    for index in range(len(j)):
+        u = i[index]
+        v = j[index]
+                #  print(page[u], page[v])
+        if page[u] == page[v]:  # Se la pagina è la stessa, aggiungi i centroidi e le bb
+                new_cent.append([centroids[u], centroids[v]])
+                lab.append(labels[index])
+                save = True
+        elif save and page[u]!= page[v]:
+                        # Devi spostare i centroidi di v e aggiungere tutte le altre informazioni
+            k = index + 1
+            if k < len(j):
+                u1 = i[k]
+                v1 = j[k]
+            image1, width = get_name(path_new_im, name, page, u)
+            image2, _ = get_name(path_new_im, name, page, v)
+
+                        # Plotto gli edge del 2 documento a dx
+            while k < len(j) and int(page[u]) < int(page[v1]) <= int(page[u]) + 1:
+                if page[u1] != page[v1]:
+                    new_cent.append(tuple([[centroids[u1][0], centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
+                else:
+                    new_cent.append(tuple([[centroids[u1][0] +  width, centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
+                lab.append(labels[k])
+                k = k +  1
+                if k < len(j):
+                    u1 = i[k]
+                    v1 = j[k]
+                    #  print(len(lab), len(new_cent))
+            plot_edge(name, page, new_cent, u, v, image1, image2, lab, index)
+                    #  print(name)
+            save = False
+            new_cent = []
+            lab = []
+            num_page =num_page + 1
+
+def get_graph():
+    path_image = 'exp_yolo_9/images/'
+    path_json = 'exp_yolo_9/json_yolo/'
+    
+    if not os.path.exists('savepred/'):
+         os.makedirs('savepred')
+    array_graph = []
+    list_json = os.listdir(path_json)
+    for d in list_json: # d = 'ACL_P11-1008.json' 
+        new_cent = []
+        new_bb = []
+        num_page = 0
+        lab = []
+   
+        file_json =  path_json + d
+        path_new_im = 'savebox/'
+        if not os.path.exists('savebox/'):
+            os.makedirs('savebox')
+
+        with open(file_json, errors="ignore") as json_file:
+            data = json.load(json_file)
+            # Tutte le informazioni di tutte le pagine 
+            bounding_boxes, page, labels_yolo = get_info_json(data)
+            centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in bounding_boxes]
+
+            labels, i, j = get_nodes(bounding_boxes, labels_yolo, page)      
+            name = d.replace('.json', '')
+
+            # image, _ = get_name(path_image, name, page, 0)
+            
+            # if image != None:
+            #     draw = ImageDraw.Draw(image)
+            #     plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
+            #                    num_page, lab, path_new_im, bounding_boxes, page, 
+            #                    labels_yolo, centroids, labels, i, j, name, image)
+
+             # Graph
+            g = dgl.graph((i, j))
+            g.edata['label'] = th.tensor(labels)
+
+            #Node Features
+            g.ndata['centroids'] = th.tensor(centroids)
+            g.ndata['bb'] = th.tensor(bounding_boxes)
+            g.ndata['page'] = th.tensor(page)
+
+            array_graph.append(g)
+    return array_graph
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="...")
    # parser.add_argument("--video", dest="video", default=None, help="Path of the video")
         
     #'exp_yolo_9/json_yolo/ACL_P11-1008_5.json' #ACL_2020.acl-main.99_0.json'
   
-    path_image = 'exp_yolo_9/images/'
-    path_json = 'exp_yolo_9/json_yolo/'
-    
-    new_cent = []
-    new_bb = []
-
-    check_folder  = True
-    if not os.path.exists('savepred/'):
-         os.makedirs('savepred')
-    
-    num_page = 0
-    lab = []
-    # for su json
-    d = 'ACL_P11-1008.json' 
-    file_json =  path_json + d
-    path_new_im = 'savebox/'
-    if not os.path.exists('savebox/'):
-         os.makedirs('savebox')
-
-    with open(file_json, errors="ignore") as json_file:
-        data = json.load(json_file)
-        # Tutte le informazioni di tutte le pagine 
-        bounding_boxes, page, labels_yolo = get_info_json(data)
-        centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in bounding_boxes]
-
-        labels, i, j = get_nodes(bounding_boxes, labels_yolo, page)      
-        name = d.replace('.json', '')
-
-        image, _ = get_name(path_image, name, page, 0)
-        draw = ImageDraw.Draw(image)
-
-        for b in range(len(bounding_boxes)):
-            p = page[b]
-            color = get_color(labels_yolo[b])
-            if b>0 and p != page[b-1]: #cambia pagina #salvo
-                save_im = path_new_im + name + '_' + str(page[b-1]) + '.png'
-                image.save(save_im)
-                image, _ = get_name(path_image, name, page, b)
-                draw = ImageDraw.Draw(image)
-            elif b == len(bounding_boxes)-1:
-                save_im = path_new_im + name + '_' + str(page[b]) + '.png'
-                image.save(save_im)
-            draw.rectangle(bounding_boxes[b], outline = color) 
-        
-        save = True
-        for index in range(len(j)):
-            u = i[index]
-            v = j[index]
-          #  print(page[u], page[v])
-            if page[u] == page[v]:  # Se la pagina è la stessa, aggiungi i centroidi e le bb
-                    new_cent.append([centroids[u], centroids[v]])
-                    lab.append(labels[index])
-                    save = True
-            elif save and page[u]!= page[v]:
-                # Devi spostare i centroidi di v e aggiungere tutte le altre informazioni
-                k = index + 1
-                if k < len(j):
-                    u1 = i[k]
-                    v1 = j[k]
-                image1, width = get_name(path_new_im, name, page, u)
-                image2, _ = get_name(path_new_im, name, page, v)
-
-                # Plotto gli edge del 2 documento a dx
-                while k < len(j) and int(page[u]) < int(page[v1]) <= int(page[u]) + 1:
-                    if page[u1] != page[v1]:
-                        new_cent.append(tuple([[centroids[u1][0], centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
-                    else:
-                        new_cent.append(tuple([[centroids[u1][0] +  width, centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
-                    lab.append(labels[k])
-                    k = k +  1
-                    if k < len(j):
-                        u1 = i[k]
-                        v1 = j[k]
-              #  print(len(lab), len(new_cent))
-                plot_edge(name, page, new_cent, u, v, image1, image2, lab, index)
-              #  print(name)
-                save = False
-                new_cent = []
-                lab = []
-                num_page =num_page + 1 
+    array_graph= get_graph()
+   # print(array_graph)
+    bg_train = dgl.batch(array_graph) # num_nodes=725391, num_edges=811734,
+    #bg_train = bg_train.int().to(device)
+    print(bg_train)
+#
+             

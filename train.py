@@ -4,7 +4,7 @@ import os
 import torch.nn.functional as F
 import dgl
 from sklearn.model_selection import train_test_split
-
+from plot_edge_multipage_YOLO import get_graph
 #from Tesi_.model2_git import EdgeClassifier
 from model import Model
 from model3 import Model3
@@ -22,7 +22,7 @@ from model3 import Model3
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def model_train(graph, val_graph, name_model):
+def model_train(graph, val_graph, name_model, epoch):
     print(graph)
 
     node_features, input, edge_label = get_nfeatures(graph)
@@ -32,12 +32,12 @@ def model_train(graph, val_graph, name_model):
     out_features = 2
     hidden = 20
     #model = EdgeClassifier(graph.num_edges(), 1, 0.2, node_features, 300, hidden, device, False)
-    model = Model3(input, hidden , out_features).to(device)
+    model = Model(input, hidden , out_features).to(device)
     opt = torch.optim.Adam(model.parameters())
 
-    for epoch in range(500):
+    for epoch in range(epoch):
         logit = model(graph, node_features)   
-        print(logit, '/n',edge_label.squeeze())
+        #print(logit, '/n',edge_label.squeeze())
         loss = F.cross_entropy(logit, edge_label.squeeze())
 
         opt.zero_grad()
@@ -52,23 +52,30 @@ def model_train(graph, val_graph, name_model):
     torch.save(model.state_dict(), name_model)
 
 def get_nfeatures(graph):
-    #labels_node = 
-    page = graph.ndata['page'].float().unsqueeze(-1)
-    centroids = graph.ndata['centroids'] 
-    bb = graph.ndata['bb']    
 
-    # Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
-    node_features = torch.cat([page, centroids, bb], dim=-1)
-    #node_features = torch.cat([page, centroids], dim=-1)
-    #node_features = torch.cat([node_features, bb], dim=-1)
+  #  page = graph.ndata['page'].float().unsqueeze(-1)
+    centroids = graph.ndata['centroids'] 
+    bb = graph.ndata['bb']   
+   # dim = graph.ndata['dim']   
+  #  rotbb = graph.ndata['bb_all']   
+    lab = graph.ndata['labels'].float().unsqueeze(1)
+    coord_rel = graph.ndata['relative_coordinates'].float() 
+  
+    coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
+ #   text_emb = graph.ndata['embedding']
+  #  Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
+  #  node_features = torch.cat([bb, lab], dim=-1)
+  #  node_features = torch.cat([centroids, bb, lab], dim=-1)
+  #  node_features = torch.cat([page, centroids, bb, lab], dim=-1)
+  #  node_features = torch.cat([bb, lab, coord_rel_reshaped,], dim=-1)
+    node_features = torch.cat([bb, lab, coord_rel_reshaped, centroids], dim=-1) #text_emb
+  #  node_features = torch.cat([centroids, bb, lab], dim=-1)
 
     node_features = node_features.to(device)
     print('node_feature:', node_features.shape)
-
     input = node_features.shape[1]
     edge_label = graph.edata['label'].unsqueeze(-1)
-    #edge_label = edge_label.squeeze().long()
-    #print(bb.shape, centroids.shape, page.shape)
+   
     return node_features,input,edge_label
 
 def accuracy(indices, labels):
@@ -79,7 +86,8 @@ def accuracy(indices, labels):
     return correct.item() *1.0/ len(labels)
 
 def model_test(model_name):
-    graph_test = get_graphs('test')
+    graph_test, _ , _ ,_ = get_graphs('test')
+    #graph_test = get_graph()
     
     graph_test = dgl.batch(graph_test) # num_nodes=725391, num_edges=811734,
     graph_test = graph_test.int().to(device)
@@ -90,7 +98,7 @@ def model_test(model_name):
     hidden = 20
 
     # Carica il modello addestrato
-    model = Model3(input, hidden , out_features).to(device)
+    model = Model(input, hidden , out_features).to(device)
     model.load_state_dict(torch.load(model_name))
 
     # Imposta il modello in modalità di valutazione
@@ -107,9 +115,12 @@ def model_test(model_name):
 
     print('Test Accuracy: {:.4f}'.format(acc)) # Test Accuracy: 0.9009
     
-def main_train():
-    #bg= get_one_g()#get_graphs()
-    train_graphs = get_graphs('train')
+def main_train(model_name, epoch):
+    #bg_train = get_one_g()#get_graphs()
+    train_graphs, _, _ , _= get_graphs('train')
+    print('Start Train')
+
+    #train_graphs = get_graph()
   #  train_graphs, val_graphs = train_test_split(graph_train, test_size=0.01)
     
     bg_train = dgl.batch(train_graphs) # num_nodes=725391, num_edges=811734,
@@ -120,11 +131,12 @@ def main_train():
   #  bg_val = bg_val.int().to(device)
   #  print(bg_train, '\n', bg_val)
 
-    model_train(bg_train, bg_val, 'model_gat.pth')
+    model_train(bg_train, bg_val, model_name, epoch)
 
 if __name__ == '__main__':
-    main_train()
-    #model_test('model1.pth')
+    main_train('model__bb_lab_relnoabs_cent.pth', 500)
+   
+   # model_test('model_no_page.pth')
     
 """ 
 Graph(num_nodes=732914, num_edges=820123,

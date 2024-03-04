@@ -11,9 +11,9 @@ class SAGE(nn.Module):
     def __init__(self, in_feats, hid_feats, out_feats):
         super().__init__()
         self.conv1 = SAGEConv(
-            in_feats=in_feats, out_feats=hid_feats, aggregator_type='mean')
+            in_feats=in_feats, out_feats=hid_feats, aggregator_type='mean')#'mean') #'lstm')#pool
         self.conv2 = SAGEConv(
-            in_feats=hid_feats, out_feats=out_feats, aggregator_type='mean')
+            in_feats=hid_feats, out_feats=out_feats, aggregator_type='pool')#'mean')
 
     def forward(self, graph, inputs):
         # inputs are features of nodes

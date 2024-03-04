@@ -101,7 +101,7 @@ def get_data(path_json, folder, pagine):
 #NEW dataset
 # path_json-> train o val
 def get_data(path_json, path_image, folder, pagine, name,num):
-    
+    print(path_json)
     with open(path_json, errors="ignore") as json_file:
         data = json.load(json_file)
         #pagine = 0
@@ -110,13 +110,13 @@ def get_data(path_json, path_image, folder, pagine, name,num):
         num+=1
         #print(pagine)
         #print(num)
-        # if pagine < 100:
-        #      folder_dest = folder + 'val/'
-        #      print('Doc VAL:', pagine)
-        # else:
-        #     folder_dest = folder + 'train/'
-        #     print('Doc TRAIN: ', pagine)  
-        folder_dest = folder + 'test/'
+        if pagine < 100:
+             folder_dest = folder + 'val/'
+             print('Doc VAL:', pagine)
+        else:
+            folder_dest = folder + 'train/'
+            print('Doc TRAIN: ', pagine)  
+     #   folder_dest = folder + 'test/'
         create_folder(folder_dest)
         save_lab_path = folder_dest + 'labels/'
         create_folder(save_lab_path)
@@ -143,8 +143,12 @@ def get_data(path_json, path_image, folder, pagine, name,num):
                 write = []
 
             page = data[index]['page']
-            im = path_image + '_' + str(page) + '.jpg'
+        #    im = path_image + '_' + str(page) + '.jpg'
+            im = path_image + str(page) + '.png'
+            if not os.path.exists(im):
+                break
             image = Image.open(im)
+
             width, height = image.size
             name_image  = name +'_' +str(page) + '.png'
             name_labels = name +'_'+ str(page) +'.txt'
@@ -210,9 +214,9 @@ def all_json(path_json, path_images):
         #print(j)
         name = j.replace('.json', '')
         path_image = path_images + name +'/'
-        image = path_image + name 
+        image = path_image #+ name #TODO per hdrs
         #print(path_images)
-        folder = "../data_yolo_new/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+        folder = "../dataset_hrdh/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
         pagine,num = get_data(json, image, folder, pagine, name,num)
         
     print('TOTALE', pagine,num)
@@ -229,8 +233,8 @@ if __name__ == '__main__':
     parser.add_argument("--video", dest="video", default=None, help="Path of the video")
     args = parser.parse_args()
    # path_json = "dataset/train.json"
-    path_json = "HRDS/test/"
-    path_images = "HRDS/images/"
+    path_json = "HRDH/train/"
+    path_images = "HRDH/images/"
     print(path_json)
     all_json(path_json, path_images)
     #folder = "C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati

@@ -1,7 +1,7 @@
 import os
 import json
 from PIL import Image, ImageDraw as D
-
+from create_graphGT import get_edge_node
 def merge_box(box1, box2):
     x0 = min(box1[0], box2[0])
     y0 = min(box1[1], box2[1])
@@ -45,10 +45,10 @@ def process_json(file_json, folder_save, name, path_images):
                     #name è = per tutti
                     draw0, image0, name_image0 = get_draw(name, folder_save, page[i]-2)
                     print(folder_save,  name_image0, '_', name_image)
-                    path_save_conc = folder_save +'conc/' +name +'_' + str(page[i]-1) +'_'+ str(page[i])+ '.jpg'
+                    path_save_conc = folder_save +name +'_' + str(page[i]-1) +'_'+ str(page[i])+ '.jpg'
                     get_concat_h(image0, image).save(path_save_conc)
                     
-                    draw_con, image_con, name_con = get_draw(name, folder_save+'conc/', str(page[i]-1) +'_'+ str(page[i]))
+                    draw_con, image_con, name_con = get_draw(name, folder_save, str(page[i]-1) +'_'+ str(page[i]))
                     # creare funzione per disegnare archi tra pagine diverse
                     plot_edge(draw_con, centroids, next_edge, labels_edge_next, image.width) 
                     image_con.save(path_save_conc)
@@ -146,11 +146,11 @@ def get_draw(name, folder, page):#tutte le informazioni delle immagini stanno ne
 
 
 def main():
-    folder_save = 'data_h/save/'
+    folder_save = 'gt_plot_testconc/'
     path_jsons = 'HRDS/test/'
     path_images = 'HRDS/images/'
 
-    d = 'ACL_2020.acl-main.99.json' #'NAACL_N19-1390.json' #
+    d = "ACL_2020.acl-main.200.json" #'ACL_2020.acl-main.99.json' #'NAACL_N19-1390.json' #
     name = d.replace('.json', '')
 
     file_json = os.path.join(path_jsons, d)
