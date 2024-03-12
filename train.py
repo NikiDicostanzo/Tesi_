@@ -1,10 +1,15 @@
 import torch
 from create_graphGT import get_one_g, get_graphs
+
+from create_graphGT_3lab import get_graphs3
+import numpy as np
+
+from plot_edge_multipage_GT_Merge import get_graph_merge_gt
 import os
 import torch.nn.functional as F
 import dgl
 from sklearn.model_selection import train_test_split
-from plot_edge_multipage_YOLO import get_graph
+#from plot_edge_multipage_YOLO import get_graph
 #from Tesi_.model2_git import EdgeClassifier
 from model import Model
 from model3 import Model3
@@ -26,10 +31,14 @@ def model_train(graph, val_graph, name_model, epoch):
     print(graph)
 
     node_features, input, edge_label = get_nfeatures(graph)
+    print(type(edge_label))
     #node_features_val, input_val, edge_label_val = get_nfeatures(val_graph)
-    
+    a = np.array(edge_label)
+    unique_values, counts = np.unique(a, return_counts=True)
+    print(unique_values, counts)  #[0 1 2] [ 53094 587187 106568]
     print('node_features:', node_features.shape, '|', 'input', input, '|','edge_label', edge_label.shape)
-    out_features = 2
+   
+    out_features = 3
     hidden = 20
     #model = EdgeClassifier(graph.num_edges(), 1, 0.2, node_features, 300, hidden, device, False)
     model = Model(input, hidden , out_features).to(device)
@@ -46,7 +55,7 @@ def model_train(graph, val_graph, name_model, epoch):
         
         acc = accuracy(logit, edge_label)
         if epoch % 10 == 0:
-             print('Epoch {:05d} | Loss {:.4f} | Accuracy w/ Validation data set {:.4f}'
+             print('Epoch {:05d} | Loss {:.4f} | Accuracy train set {:.4f}'
                    .format(epoch, loss.item(), acc))
     # Salva il modello addestrato
     torch.save(model.state_dict(), name_model)
@@ -60,22 +69,18 @@ def get_nfeatures(graph):
   #  rotbb = graph.ndata['bb_all']   
     lab = graph.ndata['labels'].float().unsqueeze(1)
     coord_rel = graph.ndata['relative_coordinates'].float() 
-  
     coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
- #   text_emb = graph.ndata['embedding']
+  
+  #  text_emb = graph.ndata['embedding']
+    
   #  Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
-  #  node_features = torch.cat([bb, lab], dim=-1)
-  #  node_features = torch.cat([centroids, bb, lab], dim=-1)
-  #  node_features = torch.cat([page, centroids, bb, lab], dim=-1)
-  #  node_features = torch.cat([bb, lab, coord_rel_reshaped,], dim=-1)
-    node_features = torch.cat([bb, lab, coord_rel_reshaped, centroids], dim=-1) #text_emb
-  #  node_features = torch.cat([centroids, bb, lab], dim=-1)
+    #bb, lab, coord_rel_reshaped, page, centroids, text_emb
+    node_features = torch.cat([bb, lab, centroids, coord_rel_reshaped], dim=-1) #
 
     node_features = node_features.to(device)
     print('node_feature:', node_features.shape)
     input = node_features.shape[1]
     edge_label = graph.edata['label'].unsqueeze(-1)
-   
     return node_features,input,edge_label
 
 def accuracy(indices, labels):
@@ -86,7 +91,7 @@ def accuracy(indices, labels):
     return correct.item() *1.0/ len(labels)
 
 def model_test(model_name):
-    graph_test, _ , _ ,_ = get_graphs('test')
+    graph_test, _ , _ ,_ = get_graphs3('test')
     #graph_test = get_graph()
     
     graph_test = dgl.batch(graph_test) # num_nodes=725391, num_edges=811734,
@@ -94,7 +99,7 @@ def model_test(model_name):
 
     node_features, input, edge_label = get_nfeatures(graph_test)
 
-    out_features = 2 
+    out_features = 3 
     hidden = 20
 
     # Carica il modello addestrato
@@ -117,7 +122,8 @@ def model_test(model_name):
     
 def main_train(model_name, epoch):
     #bg_train = get_one_g()#get_graphs()
-    train_graphs, _, _ , _= get_graphs('train')
+  #  train_graphs, _, _ , _= get_graph_merge_gt()
+    train_graphs, _, _ , _= get_graphs3('train')
     print('Start Train')
 
     #train_graphs = get_graph()
@@ -134,7 +140,7 @@ def main_train(model_name, epoch):
     model_train(bg_train, bg_val, model_name, epoch)
 
 if __name__ == '__main__':
-    main_train('model__bb_lab_relnoabs_cent.pth', 500)
+    main_train('model_bb_lab_cent_rel6_3class.pth', 500)
    
    # model_test('model_no_page.pth')
     

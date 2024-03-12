@@ -256,5 +256,5 @@ if __name__ == '__main__':
     #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
     #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
 
-    folder = 'exp_yolo_9/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
+    folder = 'exp_yolo_9_hrdh/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
     merge_all_image(folder, '.png')

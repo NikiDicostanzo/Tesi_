@@ -44,27 +44,35 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
         for i in range(len(data)): 
             k = 1
             prova = True
-            while k< 10 and i - k >0: #and k<i+2 :
+            while k< 15 and i - k >0: #and k<i+2 :
                 if page[i] == page[i-k]:
-                    if i >0 and relation[i]=='connect' and parent[i] == data[i-k]['line_id']:
-                        array_edges.append([i-k,i]) # arco con quello precedente
+                    # Stesso blocco 
+                    if i >0 and relation[i]=='connect' and parent[i] == data[i-k]['line_id'] and (data[i]['class'] != 'equ' and data[i-k]['class'] != 'equ'):
+                        #array_edges.append([i-k,i]) # arco con quello precedente
                         node_i.append(i-k)
                         node_j.append(i)
-
                         labels_edge.append(1)
                         break
+                    #Titolo  # Quello precedente
+                    elif (title_condition(data, i, i-k)or title_condition(data, i-k, i)): # Quello successivo
+                        node_i.append(i-k)
+                        node_j.append(i)
+                        labels_edge.append(2)
+                        break
                     elif k==1 or bounding_boxes[i-k][0] - bounding_boxes[i][0] >150:
-                        array_edges.append([i-k,i]) # arco con quello precedente
+                        #array_edges.append([i-k,i]) # arco con quello precedente
                         node_i.append(i-k)
                         node_j.append(i)
                         labels_edge.append(0)
-                        if data[i-k]['is_meta'] ==True:
+                       # prova2 = False
+                        if data[i]['is_meta'] ==True:
                             break
-                else:
+                    
+                else: # Collegamento tra pagine diverse
                     
                     if i >0  and data[i-k]['is_meta'] !=True:# and k>2:
                         if relation[i]=='connect' and parent[i] == data[i-k]['line_id']:
-                            array_edges.append([i-k,i]) # arco con quello precedente
+                          #  array_edges.append([i-k,i]) # arco con quello precedente
                             node_i.append(i-k)
                             node_j.append(i)
 
@@ -73,8 +81,14 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
                        #     print('i-k', i-k, data[i-k]['text'],'|','i', i, data[i]['text'] ,'|')
                        #     print(relation[i-k], relation[i], 1, '/n')
                             prova = False
+                            break
+                           #Titolo  # Quello precedente
+                        elif (title_condition(data, i, i-k)or title_condition(data, i-k, i)): # Quello successivo
+                            node_i.append(i-k)
+                            node_j.append(i)
+                            labels_edge.append(2)
+                            break
                         elif prova == True: #salvo solo 1 rosso
-                            #print()
                             array_edges.append([i-k,i])
                             node_i.append(i-k)
                             node_j.append(i)
@@ -89,10 +103,13 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
             
         return node_i, node_j, labels_edge
 
+def title_condition(data, s, t):
+    return data[s]['class'] in ['sec1','sec2','sec3', 'para', 'equ'] and data[t]['class'] in ['para', 'equ','fstline', 'sec1','sec2','sec3']
+
 import numpy as np
 
 
-def calculate_relative_coordinates(bb, k=10):
+def calculate_relative_coordinates(bb, k=6):
     # Assumendo che g.ndata['bb'] contenga le bounding boxes normalizzate
     relative_coordinates = []
     for i in range(len(bb)):
@@ -142,9 +159,8 @@ def processing_lab(labels):
 
 def get_one_g():
     json = 'data_h/json/ACL_2020.acl-main.99.json'
-    g, _, _, _= get_graph(json)
+    g, _, _, _= get_graph3(json)
     save('prova',g)
- #   print(g.edata['label'].shape)
     return g
 
 def load(name):
@@ -159,7 +175,7 @@ def save(name,graphs):
     print(graph_path)
     save_graphs(graph_path, graphs)
 
-def get_graphs(type):
+def get_graphs3(type):
     path_json = 'HRDS/' + type +'/'
     list_j = os.listdir(path_json)
     all_graph = []
@@ -170,18 +186,16 @@ def get_graphs(type):
     for j in list_j:
         print(c)
         json = path_json + j
-        g, page, centroid, text = get_graph(json)
-        #print(g)
+        g, page, centroid, text = get_graph3(json)
         all_graph.append(g)
         pages.append(page)
         centr.append(centroid)
         texts.append(text)
         c = c+1
-    print(np.concatenate(pages, axis=0))
     return all_graph, np.concatenate(pages, axis=0), np.concatenate(centr, axis=0), np.concatenate(texts, axis=0)
    
 
-def get_graph(json_file):
+def get_graph3(json_file):
     with open(json_file) as f:
         data = json.load(f)
         bounding_boxes, page,relation,parent, labels, text = get_info_json(data)
@@ -200,7 +214,12 @@ def get_graph(json_file):
         #Node Features
         g.ndata['centroids'] = th.tensor(centroids)
 
-       # bb_all = get_all_bb_rotolone(page, bounding_boxes)
+        # node_embeddings = []
+        # for i, t in enumerate(text):
+        #     embedding = generate_embedding(t)
+        #     node_embeddings.append(embedding)
+        # g.ndata['embedding'] = th.stack(node_embeddings)
+
        # num_page = page[len(page)-1]
 
         # n_bb_all = [(normalize_bounding_box(box, 596*num_page, 842)) for box in bb_all ]
@@ -208,26 +227,13 @@ def get_graph(json_file):
         g.ndata['bb'] = th.tensor(n_bb)
 
     #    g.ndata['dim'] = th.tensor(dim)
-    #    g.ndata['page'] = th.tensor(page)
-        #print(g.nodes())
+      #  g.ndata['page'] = th.tensor(page)
         # Calcola le coordinate relative per ogni nodo
         relative_coordinates = calculate_relative_coordinates(n_bb)
         g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
 
         encoded_labels = processing_lab(labels)
         g.ndata['labels'] = th.tensor(encoded_labels) 
-
-        # node_embeddings = []
-        # for i, t in enumerate(text):
-        #     embedding = generate_embedding(t)
-        #     node_embeddings.append(embedding)
-        # g.ndata['embedding'] = th.stack(node_embeddings)
-     #   print( g.ndata['embedding'].shape)
-        #g = dgl.remove_self_loop(g)
-       # g = dgl.add_self_loop(g) # PEr quando usi Gatv2!!
-       # g.set_batch_num_nodes(g.batch_num_nodes())
-       # g.set_batch_num_edges(g.batch_num_edges())
-        #num_edges = g.number_of_edges()
     return g, page, centroids, text
 
 def get_graph_merge(i, j, labels_edge, bounding_boxes, labels, page ):
@@ -267,12 +273,7 @@ def get_graph_merge(i, j, labels_edge, bounding_boxes, labels, page ):
     #     node_embeddings.append(embedding)
     # g.ndata['embedding'] = th.stack(node_embeddings)
     #   print( g.ndata['embedding'].shape)
-    #g = dgl.remove_self_loop(g)
-    # g = dgl.add_self_loop(g) # PEr quando usi Gatv2!!
-    # g.set_batch_num_nodes(g.batch_num_nodes())
-    # g.set_batch_num_edges(g.batch_num_edges())
-    #num_edges = g.number_of_edges()
-  #  print(g)
+  
     return g, page, centroids
 
    

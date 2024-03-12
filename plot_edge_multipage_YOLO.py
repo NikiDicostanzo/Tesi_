@@ -161,7 +161,7 @@ def get_concat_h(im1, im2):
     return dst, draw
 
 def plot_edge(name, page, new_cent, u, v, image1, image2, lab, index):
-    path_save_conc = 'savepred/' + name + '_' + str(page[u]) +'_'+ str(page[v]) + '.png'# +'_'+ str(index) + '.png'
+    path_save_conc = 'exp_yolo_9_hrdh/savepred/' + name + '_' + str(page[u]) +'_'+ str(page[v]) + '.png'# +'_'+ str(index) + '.png'
     con_img, con_draw = get_concat_h(image1, image2)#.save(path_save_conc)
     index = 0
     for cu, cv in new_cent:
@@ -229,11 +229,11 @@ def plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, n
             num_page =num_page + 1
 
 def get_graph():
-    path_image = 'exp_yolo_9/images/'
-    path_json = 'exp_yolo_9/json_yolo/'
+    path_image = 'exp_yolo_9_hrdh/images/'
+    path_json = 'exp_yolo_9_hrdh/json_yolo/'
     
-    if not os.path.exists('savepred/'):
-         os.makedirs('savepred')
+    if not os.path.exists('exp_yolo_9_hrdh/savepred/'):
+         os.makedirs('exp_yolo_9_hrdh/savepred')
     array_graph = []
     list_json = os.listdir(path_json)
     for d in list_json: # d = 'ACL_P11-1008.json' 
@@ -241,11 +241,11 @@ def get_graph():
         new_bb = []
         num_page = 0
         lab = []
-   
+        print(d)
         file_json =  path_json + d
-        path_new_im = 'savebox/'
-        if not os.path.exists('savebox/'):
-            os.makedirs('savebox')
+        path_new_im = 'exp_yolo_9_hrdh/savebox_2/'
+        if not os.path.exists('exp_yolo_9_hrdh/savebox_2/'):
+            os.makedirs('exp_yolo_9_hrdh/savebox_2')
 
         with open(file_json, errors="ignore") as json_file:
             data = json.load(json_file)
@@ -256,13 +256,13 @@ def get_graph():
             labels, i, j = get_nodes(bounding_boxes, labels_yolo, page)      
             name = d.replace('.json', '')
 
-            # image, _ = get_name(path_image, name, page, 0)
+            image, _ = get_name(path_image, name, page, 0)
             
-            # if image != None:
-            #     draw = ImageDraw.Draw(image)
-            #     plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
-            #                    num_page, lab, path_new_im, bounding_boxes, page, 
-            #                    labels_yolo, centroids, labels, i, j, name, image)
+            if image != None:
+                draw = ImageDraw.Draw(image)
+                plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
+                               num_page, lab, path_new_im, bounding_boxes, page, 
+                               labels_yolo, centroids, labels, i, j, name, image)
 
              # Graph
             g = dgl.graph((i, j))

@@ -110,13 +110,13 @@ def get_data(path_json, path_image, folder, pagine, name,num):
         num+=1
         #print(pagine)
         #print(num)
-        if pagine < 100:
-             folder_dest = folder + 'val/'
-             print('Doc VAL:', pagine)
-        else:
-            folder_dest = folder + 'train/'
-            print('Doc TRAIN: ', pagine)  
-     #   folder_dest = folder + 'test/'
+        # if pagine < 100:
+        #      folder_dest = folder + 'val/'
+        #      print('Doc VAL:', pagine)
+        # else:
+        #     folder_dest = folder + 'train/'
+        #     print('Doc TRAIN: ', pagine)  
+        folder_dest = folder + 'test/'
         create_folder(folder_dest)
         save_lab_path = folder_dest + 'labels/'
         create_folder(save_lab_path)
@@ -210,16 +210,17 @@ def all_json(path_json, path_images):
     print(len(list_json))
     
     for j in list_json:
-        json = path_json + j
-        #print(j)
-        name = j.replace('.json', '')
-        path_image = path_images + name +'/'
-        image = path_image #+ name #TODO per hdrs
-        #print(path_images)
-        folder = "../dataset_hrdh/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
-        pagine,num = get_data(json, image, folder, pagine, name,num)
-        
-    print('TOTALE', pagine,num)
+        if j != '.DS_Store':
+            json = path_json + j
+            #print(j)
+            name = j.replace('.json', '')
+            path_image = path_images + name +'/'
+            image = path_image #+ name #TODO per hdrs
+            #print(path_images)
+            folder = "../dataset_hrdh/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+            pagine,num = get_data(json, image, folder, pagine, name,num)
+            
+    print('TOTALE', pagine,num)#TOTALE 7788 600
 
 def get_norm_box(width, l, height):
     norm_box = [] 
@@ -229,11 +230,11 @@ def get_norm_box(width, l, height):
     return norm_box
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Create event frame")
-    parser.add_argument("--video", dest="video", default=None, help="Path of the video")
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument("--video", dest="video", default=None, help="")
     args = parser.parse_args()
    # path_json = "dataset/train.json"
-    path_json = "HRDH/train/"
+    path_json = "HRDH/test/"
     path_images = "HRDH/images/"
     print(path_json)
     all_json(path_json, path_images)
