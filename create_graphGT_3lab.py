@@ -41,70 +41,64 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
         array_edges = []
         node_i = []
         node_j = []
+     
         for i in range(len(data)): 
             k = 1
-            prova = True
-            while k< 15 and i - k >0: #and k<i+2 :
+            break_count = 0 # voglio avere almeno 3 grafi per ogni arco
+            plot_flow = True
+            while k< 10 and i - k >0: #and k<i+2 :
                 if page[i] == page[i-k]:
                     # Stesso blocco 
                     if i >0 and relation[i]=='connect' and parent[i] == data[i-k]['line_id'] and (data[i]['class'] != 'equ' and data[i-k]['class'] != 'equ'):
                         #array_edges.append([i-k,i]) # arco con quello precedente
-                        node_i.append(i-k)
-                        node_j.append(i)
-                        labels_edge.append(1)
+                        add_edge(labels_edge, node_i, node_j, i, k, 1) #BLUE
+                        plot_flow = False
+                        if break_count > 3:
+                            break
+                        break_count = break_count + 1
+                
+                    elif plot_flow and data[i]['class'] != data[i-k]['class'] and  (title_condition(data, i, i-k) or title_condition(data, i-k, i)): # Quello successivo
+                        add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNE
+                        plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
                         break
-                    #Titolo  # Quello precedente
-                    elif (title_condition(data, i, i-k)or title_condition(data, i-k, i)): # Quello successivo
-                        node_i.append(i-k)
-                        node_j.append(i)
-                        labels_edge.append(2)
-                        break
-                    elif k==1 or bounding_boxes[i-k][0] - bounding_boxes[i][0] >150:
-                        #array_edges.append([i-k,i]) # arco con quello precedente
-                        node_i.append(i-k)
-                        node_j.append(i)
-                        labels_edge.append(0)
-                       # prova2 = False
+                    elif break_count < 3:
+                        add_edge(labels_edge, node_i, node_j, i, k, 0)#RED
+                    
                         if data[i]['is_meta'] ==True:
                             break
+                        break_count = break_count + 1
                     
                 else: # Collegamento tra pagine diverse
                     
                     if i >0  and data[i-k]['is_meta'] !=True:# and k>2:
                         if relation[i]=='connect' and parent[i] == data[i-k]['line_id']:
                           #  array_edges.append([i-k,i]) # arco con quello precedente
-                            node_i.append(i-k)
-                            node_j.append(i)
-
-                            labels_edge.append(1)
-                           # prova = True
-                       #     print('i-k', i-k, data[i-k]['text'],'|','i', i, data[i]['text'] ,'|')
-                       #     print(relation[i-k], relation[i], 1, '/n')
-                            prova = False
-                            break
+                            add_edge(labels_edge, node_i, node_j, i, k, 1)
+                            plot_flow = False
+                            if break_count > 3:
+                                break
+                            break_count = break_count + 1
                            #Titolo  # Quello precedente
-                        elif (title_condition(data, i, i-k)or title_condition(data, i-k, i)): # Quello successivo
-                            node_i.append(i-k)
-                            node_j.append(i)
-                            labels_edge.append(2)
+                        elif plot_flow == True and (title_condition(data, i, i-k)or title_condition(data, i-k, i)): # Quello successivo
+                            add_edge(labels_edge, node_i, node_j, i, k, 2)
+                            plot_flow = False
                             break
-                        elif prova == True: #salvo solo 1 rosso
-                            array_edges.append([i-k,i])
-                            node_i.append(i-k)
-                            node_j.append(i)
-
-                            labels_edge.append(0)
-
-                     #       print('i',i, 'i-k',i-k, 'k', k, '|',data[i-k]['text'],'|',data[i]['text'] ,'|') 
-                     #       print(relation[i-k], relation[i], 0, '/n')
-                            prova = False
+                        elif break_count < 3:#prova == True: #salvo solo 1 rosso
+                            add_edge(labels_edge, node_i, node_j, i, k, 0)
+                            break_count = break_count + 1
                 k = k + 1
             # array_edges
             
         return node_i, node_j, labels_edge
 
+def add_edge(labels_edge, node_i, node_j, i, k, type_edge):
+    node_i.append(i-k)
+    node_j.append(i)
+    labels_edge.append(type_edge) 
+    
+
 def title_condition(data, s, t):
-    return data[s]['class'] in ['sec1','sec2','sec3', 'para', 'equ'] and data[t]['class'] in ['para', 'equ','fstline', 'sec1','sec2','sec3']
+    return (data[s]['class'] in ['sec1','sec2','sec3', 'para', 'equ'] and data[t]['class'] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
 
 import numpy as np
 
@@ -146,7 +140,6 @@ def get_all_bb_rotolone(page, box):
 
         new_box.append([x0,y0,x1,y1])
 
-    
     return new_box
 
 def processing_lab(labels):
