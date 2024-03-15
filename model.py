@@ -13,7 +13,7 @@ class SAGE(nn.Module):
         self.conv1 = SAGEConv(
             in_feats=in_feats, out_feats=hid_feats, aggregator_type='mean')#'mean') #'lstm')#pool
         self.conv2 = SAGEConv(
-            in_feats=hid_feats, out_feats=out_feats, aggregator_type='pool')#'mean')
+            in_feats=hid_feats, out_feats=out_feats, aggregator_type='mean')#'mean')
 
     def forward(self, graph, inputs):
         # inputs are features of nodes

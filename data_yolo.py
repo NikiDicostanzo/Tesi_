@@ -108,32 +108,27 @@ def get_data(path_json, path_image, folder, pagine, name,num):
         len_data = len(data)
         pagine += data[len_data-1]["page"]
         num+=1
-        #print(pagine)
-        #print(num)
+
         # if pagine < 100:
         #      folder_dest = folder + 'val/'
         #      print('Doc VAL:', pagine)
         # else:
-        #     folder_dest = folder + 'train/'
-        #     print('Doc TRAIN: ', pagine)  
+        #      folder_dest = folder + 'train/'
+     #   print('Doc TRAIN: ', pagine)  
         folder_dest = folder + 'test/'
         create_folder(folder_dest)
         save_lab_path = folder_dest + 'labels/'
         create_folder(save_lab_path)
         save_im_path  = folder_dest + 'images/'
         create_folder(save_im_path)
-
         count_page = 0
         write = []
-        print(data)
-        for index in range(len(data)) :
-
+     
+        for index in range(len(data)):
             #se cambia pagina salvo
             if index > 0 and data[index]['page'] != data[index-1]['page']: 
-                
                 save_lab = save_lab_path + name_labels
                 
-               # print(save_lab)
                 with open(save_lab, 'w') as f:
                     for i in write:
                         f.write(i)
@@ -143,9 +138,12 @@ def get_data(path_json, path_image, folder, pagine, name,num):
                 write = []
 
             page = data[index]['page']
-        #    im = path_image + '_' + str(page) + '.jpg'
-            im = path_image + str(page) + '.png'
+            ############################################################
+            im = path_image + '_' + str(page) + '.jpg'  # TODO per HRDS
+        #    im = path_image + str(page) + '.jpg'       # TODO per HRDH
+            
             if not os.path.exists(im):
+                print('Image: ', im, 'NO EXIST')
                 break
             image = Image.open(im)
 
@@ -197,7 +195,6 @@ def get_data(path_json, path_image, folder, pagine, name,num):
           
             tmp = class_lab + ' ' + txt_data  
             #if class_lab== '0':
-            #      print(tmp, name_labels)
             write.append(tmp)
 
             
@@ -207,18 +204,16 @@ def all_json(path_json, path_images):
     list_json = os.listdir(path_json)
     pagine = 0
     num = 0
-    print(len(list_json))
     
     for j in list_json:
         if j != '.DS_Store':
             json = path_json + j
-            #print(j)
+
             name = j.replace('.json', '')
             path_image = path_images + name +'/'
-            image = path_image #+ name #TODO per hdrs
-            #print(path_images)
+            image = path_image + name #TODO + name per HRDS !!!!!!!!!
             folder = "../dataset_hrdh/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
-            pagine,num = get_data(json, image, folder, pagine, name,num)
+            pagine,num = get_data(json, image, folder, pagine, name, num)
             
     print('TOTALE', pagine,num)#TOTALE 7788 600
 
@@ -234,8 +229,8 @@ if __name__ == '__main__':
     parser.add_argument("--video", dest="video", default=None, help="")
     args = parser.parse_args()
    # path_json = "dataset/train.json"
-    path_json = "HRDH/test/"
-    path_images = "HRDH/images/"
+    path_json = "HRDS/test/"
+    path_images = "HRDS/images/"
     print(path_json)
     all_json(path_json, path_images)
     #folder = "C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati

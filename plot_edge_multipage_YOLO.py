@@ -37,20 +37,25 @@ def get_nodes(bounding_boxes, labels_yolo, page):
 
     # considerare i k piu vicini !! 
     # Dati sono in ordine di lettura
-
+    count_element_page = 0
+    second_page  = False
     for index_i in range(len(bounding_boxes)):
-        k = 1
+        k = 0
         #index_j = index_i + k
         index_j = index_i
         # voglio solo i k + vicini
         count_edge = 0
         blu_plot = True
-        while k < 10 and index_j-k > 0 : #index_j < len(bounding_boxes):
-        #    print(index_i, k)
+        if index_i > 0 and page[index_i] == page[index_i-1] :
+            count_element_page = count_element_page + 1 # conto elementi pagina e azzero quando salvo
+        else:
+            count_element_page = 1
+            blu_plot_new = True
+        while k < 10 and index_j-k >= 0 : #index_j < len(bounding_boxes):
             distances =  min_disty_vert(bounding_boxes[index_j-k], bounding_boxes[index_i])
             if page[index_j-k] == page[index_i]: 
-               
                 if blu_plot and condition_edge(bounding_boxes, labels_yolo, index_j-k, index_i, distances):
+                  
                     j_node.append(index_i)
                     i_node.append(index_j-k)
                     labels.append(1)
@@ -69,14 +74,14 @@ def get_nodes(bounding_boxes, labels_yolo, page):
                 
              #   print(labels_yolo[index_j-k], labels_yolo[index_i])    
                         #    if labels_yolo[index_j-k] == labels_yolo[index_i]:
-                if blu_plot and condition_edge_page(bounding_boxes, labels_yolo, index_j-k, index_i, distances):
+                if blu_plot_new and condition_edge_page(count_element_page, labels_yolo, index_j-k, index_i, page):
                     j_node.append(index_i)
                     i_node.append(index_j-k)
                     labels.append(1)
                     count_edge = count_edge+1 
-                    blu_plot = False  
+                    blu_plot_new = False  
                     #break
-                elif count_edge<1: 
+                elif count_edge<2: 
                     j_node.append(index_i)
                     i_node.append(index_j-k) 
                     labels.append(0)
@@ -90,10 +95,10 @@ def get_nodes(bounding_boxes, labels_yolo, page):
     i = th.tensor(i_node)
     return labels, i, j
 
-def condition_edge_page(bounding_boxes, labels_yolo, index_i, index_j, distances):
-    return labels_yolo[index_j] in ['para', 'fstline'] \
-        and labels_yolo[index_i] in ['fstline', 'para']
- 
+def condition_edge_page(count_element_page, labels_yolo, index_i, index_j, page):
+    if labels_yolo[index_j] in ['para', 'fstline'] and labels_yolo[index_i] in ['para', 'fstline']:
+        return True
+    return False
 
 def condition_edge(bounding_boxes, labels_yolo, index_i, index_j, distances):
     return abs(distances) < 15 and (labels_yolo[index_i]== labels_yolo[index_j] \

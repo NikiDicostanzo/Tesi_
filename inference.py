@@ -118,7 +118,7 @@ def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predic
                     u1, v1 = edges[k]
                 image1, width = get_name(path_image, image_list, page, count, u, '.png')
                 image2, _ = get_name(path_image, image_list, page, count, v, '.png')
-                print(image_list[count], page[u], page[v],  '|',u, v)
+               # print(image_list[count], page[u], page[v],  '|',u, v)
                 # Plotto gli edge del 2 documento a dx
                 while k < len(edges) and page[u] < page[v1] <= page[u] + 1:
                     if page[u1] != page[v1]:
@@ -201,7 +201,6 @@ def main(folder_save, model_name, name):
     path_image, image_list = get_images('test') #image_list
    # graph, page, centroids_norm_, image_list =get_graph_merge_gt()#get_graphs('test') 
    # graph, page, centroids_norm_,_=get_graphs3('test') 
-    print(image_list)
     graph, page = get_graph_yolo()
     graph_test = dgl.batch(graph) # num_nodes=725391, num_edges=811734,
     graph_test = graph_test.int().to(device)

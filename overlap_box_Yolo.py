@@ -4,7 +4,7 @@ import argparse
 import os
 from PIL import Image, ImageDraw as D
 import numpy as np
-
+from plot_edge_multipage_YOLO import get_color
 
 def get_name(d):
     name = '.'.join(d.split('.')[0:len(d.split('.'))-1])
@@ -110,10 +110,11 @@ def check_overlap(box1, box2):
 def draw_bb(bb, image, labels):
     draw = D.Draw(image)
     for k in range(len(bb)):
-        if labels[k] == 0:
-           color = 'red'
-        else:
-           color = 'black'
+        color = get_color(alab[labels[k]])
+        # #if labels[k] == 0:
+        #    color = 'red'
+        # else:
+        #    color = 'black'
         draw.rectangle(bb[k], outline = color, width = 1) 
 
 
@@ -140,7 +141,7 @@ def marge_bb(bb, labels, confidence):
             iou = check_overlap([x0,y0,x1,y1], bb[j]) 
            
             
-            if iou > 0.0 and (labels[k] == labels[j] or labels[k] == 3):    #fstline = 3
+            if iou > 0.0 and abs(bb[k][0]-bb[j][0]) < 150:# and (labels[k] == labels[j] or labels[k] == 3):    #fstline = 3
               #  print(bb[j][0]-x0)
                            # si sovrappongono 
                #print(labels[k], labels[j], '/n')
@@ -201,7 +202,7 @@ def get_bb_merge(path_image, txt, path_save, detect):
     #else:
     #    image.show()
     return new_bb, new_labels
-
+import natsort
 # Merge su tutte le immagini
 def merge_all_image(folder, type_img):
     # txt e img devono avere stesso nome!
@@ -210,6 +211,7 @@ def merge_all_image(folder, type_img):
     images_detect = folder + 'detect/'
 
     dir_list = os.listdir(path_images) 
+    sorted_dir_list = natsort.natsorted(dir_list)   # print(dir_list)
     path_save = folder + 'merge/'
     create_folder(path_save)
 
@@ -218,17 +220,27 @@ def merge_all_image(folder, type_img):
     
     ind = 0
     data = []
-    for d in dir_list: # ciclo su tutte le immagini
 
+    for d in sorted_dir_list: # ciclo su tutte le immagini
+        
         path_image = path_images + d 
         name = get_name(d)
         txt = path_txt + name + '.txt'
         ap= name.split('_')
         page = ap[len(ap)-1]
 
+        n = '_'.join(ap[:len(ap)-1])
+
         # se non appartengono allo stesso doc salvo precedenti nello stesso json
-        if ind > 0 and get_name(dir_list[ind-1])[:-2] != name[:-2]:
-            save_json(dir_list, path_json_save, ind, data)
+        cn = get_name(sorted_dir_list[ind-1]).split('_')
+        check_name = '_'.join(cn[:len(cn)-1])
+       # print(d)
+        if ind > 0 and (check_name != n): # _0  o _10 
+            
+        #    print(check_name, '|', n)
+            
+        #    print()
+            save_json(sorted_dir_list, path_json_save, ind, data)
             data = []
             
         detect = images_detect + name + type_img
@@ -245,7 +257,10 @@ def merge_all_image(folder, type_img):
         ind = ind+1
 
 def save_json(dir_list, path_json_save, ind, data):
-    save_json = path_json_save + get_name(dir_list[ind-1])[:-2] + '.json' 
+    name_list = get_name(dir_list[ind-1]).split('_')
+    name = '_'.join(name_list[:len(name_list)-1])
+    #print(name_list, name)
+    save_json = path_json_save + name + '.json' 
     with open(save_json, 'w') as f:
         json.dump(data, f, indent=4)
         

@@ -10,6 +10,7 @@ import dgl.data
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
+import numpy as np
 
 
 from transformers import BertModel, BertTokenizer
@@ -46,7 +47,7 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
             k = 1
             break_count = 0 # voglio avere almeno 3 grafi per ogni arco
             plot_flow = True
-            while k< 10 and i - k >0: #and k<i+2 :
+            while k< 6 and i - k >0: #and k<i+2 :
                 if page[i] == page[i-k]:
                     # Stesso blocco 
                     if i >0 and relation[i]=='connect' and parent[i] == data[i-k]['line_id'] and (data[i]['class'] != 'equ' and data[i-k]['class'] != 'equ'):
@@ -61,10 +62,10 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
                         add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNE
                         plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
                         break
-                    elif break_count < 3:
+                    elif break_count < 2:
                         add_edge(labels_edge, node_i, node_j, i, k, 0)#RED
                     
-                        if data[i]['is_meta'] ==True:
+                        if data[i]['is_meta'] ==True or data[i]['class'] in ['fig', 'other']:
                             break
                         break_count = break_count + 1
                     
@@ -75,7 +76,7 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
                           #  array_edges.append([i-k,i]) # arco con quello precedente
                             add_edge(labels_edge, node_i, node_j, i, k, 1)
                             plot_flow = False
-                            if break_count > 3:
+                            if break_count > 2:
                                 break
                             break_count = break_count + 1
                            #Titolo  # Quello precedente
@@ -83,8 +84,10 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
                             add_edge(labels_edge, node_i, node_j, i, k, 2)
                             plot_flow = False
                             break
-                        elif break_count < 3:#prova == True: #salvo solo 1 rosso
+                        elif break_count < 2:#prova == True: #salvo solo 1 rosso
                             add_edge(labels_edge, node_i, node_j, i, k, 0)
+                            if data[i]['is_meta'] == True or data[i]['class'] in ['fig', 'tab', 'tabcap', 'opara', 'figcap']:#in yolo ho stolo other :|
+                                break
                             break_count = break_count + 1
                 k = k + 1
             # array_edges
@@ -96,14 +99,10 @@ def add_edge(labels_edge, node_i, node_j, i, k, type_edge):
     node_j.append(i)
     labels_edge.append(type_edge) 
     
+def title_condition(labels_yolo, s, t):
+    return (labels_yolo[s] in ['sec1','sec2','sec3', 'para', 'equ'] and labels_yolo[t] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
 
-def title_condition(data, s, t):
-    return (data[s]['class'] in ['sec1','sec2','sec3', 'para', 'equ'] and data[t]['class'] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
-
-import numpy as np
-
-
-def calculate_relative_coordinates(bb, k=6):
+def calculate_relative_coordinates(bb, k=5):
     # Assumendo che g.ndata['bb'] contenga le bounding boxes normalizzate
     relative_coordinates = []
     for i in range(len(bb)):
@@ -128,6 +127,7 @@ def normalize_bounding_box(box, image_width, image_height):
     normalized_y1 = box[3] / image_height
     
     return normalized_x0, normalized_y0, normalized_x1, normalized_y1
+
 def get_all_bb_rotolone(page, box):
     somma_larghezza = 0
     new_box = []

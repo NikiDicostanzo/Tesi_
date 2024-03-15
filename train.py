@@ -64,9 +64,7 @@ def get_nfeatures(graph):
 
   #  page = graph.ndata['page'].float().unsqueeze(-1)
     centroids = graph.ndata['centroids'] 
-    bb = graph.ndata['bb']   
-   # dim = graph.ndata['dim']   
-  #  rotbb = graph.ndata['bb_all']   
+    bb = graph.ndata['bb']      
     lab = graph.ndata['labels'].float().unsqueeze(1)
     coord_rel = graph.ndata['relative_coordinates'].float() 
     coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
@@ -140,10 +138,12 @@ def main_train(model_name, epoch):
     model_train(bg_train, bg_val, model_name, epoch)
 
 if __name__ == '__main__':
-    main_train('model_bb_lab_cent_rel6_3class.pth', 500)
+    main_train('model_bb_lab_cent_rel5_3class_k2edge6.pth', 400)
    
    # model_test('model_no_page.pth')
     
+
+# k2 -> [699346 586447 106252]
 """ 
 Graph(num_nodes=732914, num_edges=820123,
       ndata_schemes={'centroids': Scheme(shape=(2,), dtype=torch.float32), 'bb': Scheme(shape=(4,), dtype=torch.int64), 'page': Scheme(shape=(), dtype=torch.int64)}

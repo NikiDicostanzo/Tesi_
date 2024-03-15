@@ -31,64 +31,6 @@ capire dove si trovano -> calolare la sua lunghezza x!
         però se si trova a dx quindi nella colonna di destra vengono dopo quelli di sx
 '''
 
-def get_nodes2(bounding_boxes, labels_yolo, page):
-    labels_edge = []
-    array_edges = []
-    node_i = []
-    node_j = []
-    # Distanza con
-    for i in range(len(bounding_boxes)): 
-        k = 1
-        break_count = 0 # voglio avere almeno 3 grafi per ogni arco
-        plot_flow = True
-        while k< 6 and i - k >0: #and k<i+2 :
-            if page[i] == page[i-k]:
-                # Stesso blocco 
-                distances =  disty_vert(bounding_boxes[i], bounding_boxes[i-k])
-                if i >0 and condition_edge(bounding_boxes, labels_yolo, i, i-k, distances):# (labels_yolo[i] != 'equ' and labels_yolo[i-k] != 'equ'):
-                    #array_edges.append([i-k,i]) # arco con quello precedente
-                    add_edge(labels_edge, node_i, node_j, i, k, 1) #BLUE
-                    plot_flow = False
-                    if break_count > 3:
-                        break
-                    break_count = break_count + 1
-            
-                elif plot_flow and labels_yolo[i]!= labels_yolo[i-k] and  (title_condition(labels_yolo, i, i-k) or title_condition(labels_yolo, i-k, i)): # Quello successivo
-                    add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNE
-                    plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
-                    break
-                elif break_count < 2:
-                    add_edge(labels_edge, node_i, node_j, i, k, 0)#RED
-                
-                    if labels_yolo[i] in ['fig', 'other', 'meta', 'tab']:
-                        break
-                    break_count = break_count + 1
-                
-            else: # Collegamento tra pagine diverse
-                
-                if i >0  and labels_yolo[i-k] != 'meta':# and k>2:
-                    distances =  disty_vert(bounding_boxes[i], bounding_boxes[i-k])
-                    if i >0 and condition_edge(bounding_boxes, labels_yolo, i, i-k, distances):# (labels_yolo[i] != 'equ' and labels_yolo[i-k] != 'equ'):
-                        #array_edges.append([i-k,i]) # arco con quello precedente
-                        add_edge(labels_edge, node_i, node_j, i, k, 1) #BLUE
-                        plot_flow = False
-                        if break_count > 3:
-                            break
-                        break_count = break_count + 1
-                
-                    elif plot_flow and labels_yolo[i]!= labels_yolo[i-k] and  (title_condition(labels_yolo, i, i-k) or title_condition(labels_yolo, i-k, i)): # Quello successivo
-                        add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNE
-                        plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
-                        break
-                    elif break_count < 2:
-                        add_edge(labels_edge, node_i, node_j, i, k, 0)#RED
-                    
-                        if labels_yolo[i] in ['fig', 'other', 'meta', 'tab']:
-                            break
-                        break_count = break_count + 1
-            k = k + 1
-        
-    return node_i, node_j, labels_edge
 
 def condition_edge(bounding_boxes, labels_yolo, index_i, index_j, distances):
     return abs(distances) < 15 and (labels_yolo[index_i]== labels_yolo[index_j] \
@@ -136,21 +78,6 @@ def distx_oriz(box1, box2):
     distX = (box2[2] - box1[2])  # trovo distanza con quelle a dx 
     return distX
 
-def my_graph():
-    json_file = 'data_h/json/ACL_2020.acl-main.99.json'
-    path_save = 'data_h/save/'
-    folder = 'data_h/image/'
-    list_image = os.listdir(folder)
-   # print(list_image)
-    #for page in range(len(list_image)):
-    page = 0
-    path_image = folder + list_image[page]
-    image_save = path_save + list_image[page]
-    #get_near(json_file, page, path_image, image_save)
-
-#def edge_more_page():
-
-
 def get_info_json(data):
     bounding_boxes = [item['box'] for item in data] # salvo tutte le bb delle miei pagine
     page = [int(item['page']) for item in data] 
@@ -192,56 +119,22 @@ def plot_edge(name, page, new_cent, u, v, image1, image2, lab, index):
         
     con_img.save(path_save_conc)# cambiare pagina
 
-def plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, num_page, lab, path_new_im, bounding_boxes, page, labels_yolo, centroids, labels, i, j, name, image):
+def plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, num_page, lab, path_new_im, bounding_boxes, page, labels_yolo, centroids, labels, i, j, name, image):
+    set_page = set(page)
     for b in range(len(bounding_boxes)):
         p = page[b]
+        #print(p, len(bounding_boxes))
         color = get_color(labels_yolo[b])
-        if b>0 and p != page[b-1]: #cambia pagina #salvo
+        if b>0 and p != page[b-1]:# or p == len(bounding_boxes)-1: #cambia pagina #salvo
             save_im = path_new_im + name + '_' + str(page[b-1]) + '.png'
             image.save(save_im)
             image, _ = get_name(path_image, name, page, b)
             draw = ImageDraw.Draw(image)
-        elif b == len(bounding_boxes)-1:
+        
+        draw.rectangle(bounding_boxes[b], outline = color) 
+        if b == len(bounding_boxes)-1:
             save_im = path_new_im + name + '_' + str(page[b]) + '.png'
             image.save(save_im)
-        draw.rectangle(bounding_boxes[b], outline = color) 
-                
-    save = True
-    for index in range(len(j)):
-        u = i[index]
-        v = j[index]
-                #  print(page[u], page[v])
-        if page[u] == page[v]:  # Se la pagina è la stessa, aggiungi i centroidi e le bb
-                new_cent.append([centroids[u], centroids[v]])
-                lab.append(labels[index])
-                save = True
-        elif save and page[u]!= page[v]:
-                        # Devi spostare i centroidi di v e aggiungere tutte le altre informazioni
-            k = index + 1
-            if k < len(j):
-                u1 = i[k]
-                v1 = j[k]
-            image1, width = get_name(path_new_im, name, page, u)
-            image2, _ = get_name(path_new_im, name, page, v)
-
-                        # Plotto gli edge del 2 documento a dx
-            while k < len(j) and int(page[u]) < int(page[v1]) <= int(page[u]) + 1:
-                if page[u1] != page[v1]:
-                    new_cent.append(tuple([[centroids[u1][0], centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
-                else:
-                    new_cent.append(tuple([[centroids[u1][0] +  width, centroids[u1][1]], [centroids[v1][0] +  width, centroids[v1][1]]]))
-                lab.append(labels[k])
-                k = k +  1
-                if k < len(j):
-                    u1 = i[k]
-                    v1 = j[k]
-                    #  print(len(lab), len(new_cent))
-            plot_edge(name, page, new_cent, u, v, image1, image2, lab, index)
-                    #  print(name)
-            save = False
-            new_cent = []
-            lab = []
-            num_page =num_page + 1
 
 def get_graph_yolo():
     path_image = 'zexp_yolo_9_hrdh/images/'
@@ -269,15 +162,17 @@ def get_graph_yolo():
             bounding_boxes, page, labels_yolo = get_info_json(data)
             centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in bounding_boxes]
 
-          #  labels, i, j = get_nodes2(bounding_boxes, labels_yolo, page)    
+          #  labels, i, j = get_nodes2(bounding_boxes, labels_yolo, page)  
+              
             labels, i, j = get_nodes(bounding_boxes, labels_yolo, page)
             name = d.replace('.json', '')
 
             image, _ = get_name(path_image, name, page, 0)
             save_image = False
-            if save_image and  image != None:
+            
+            if save_image and  image != None: #name in "ACL_2021.acl-long.546" and 
                 draw = ImageDraw.Draw(image)
-                plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
+                plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
                                num_page, lab, path_new_im, bounding_boxes, page, 
                                labels_yolo, centroids, labels, i, j, name, image)
 
