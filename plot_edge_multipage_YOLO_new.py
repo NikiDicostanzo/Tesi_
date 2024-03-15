@@ -14,7 +14,8 @@ import networkx as nx
 import numpy as np
 from PIL import Image, ImageDraw
 
-from create_graphGT_3lab import calculate_relative_coordinates, normalize_bounding_box, processing_lab
+from plot_edge_multipage_YOLO import get_nodes
+from create_graphGT_3lab import add_edge, calculate_relative_coordinates, normalize_bounding_box, processing_lab, title_condition
 
 #from torch_geometric.data import Data
 
@@ -30,70 +31,64 @@ capire dove si trovano -> calolare la sua lunghezza x!
         però se si trova a dx quindi nella colonna di destra vengono dopo quelli di sx
 '''
 
-def get_nodes(bounding_boxes, labels_yolo, page):
-    j_node = [] 
-    i_node= []
-    labels=[] # per ogni arco metto una labels 
-
-    # considerare i k piu vicini !! 
-    # Dati sono in ordine di lettura
-
-    for index_i in range(len(bounding_boxes)):
+def get_nodes2(bounding_boxes, labels_yolo, page):
+    labels_edge = []
+    array_edges = []
+    node_i = []
+    node_j = []
+    # Distanza con
+    for i in range(len(bounding_boxes)): 
         k = 1
-        #index_j = index_i + k
-        index_j = index_i
-        # voglio solo i k + vicini
-        count_edge = 0
-        blu_plot = True
-        while k < 10 and index_j-k > 0 : #index_j < len(bounding_boxes):
-        #    print(index_i, k)
-            distances =  min_disty_vert(bounding_boxes[index_j-k], bounding_boxes[index_i])
-            if page[index_j-k] == page[index_i]: 
-               
-                if blu_plot and condition_edge(bounding_boxes, labels_yolo, index_j-k, index_i, distances):
-                    j_node.append(index_i)
-                    i_node.append(index_j-k)
-                    labels.append(1)
-                    count_edge = count_edge+1 
-                    blu_plot = False  
-                    #break
-                elif count_edge<2: 
-                    j_node.append(index_i)
-                    i_node.append(index_j-k) 
-                    labels.append(0)
-                    count_edge = count_edge+1
-                    
-                #if labels_yolo == 'meta'
-            elif labels_yolo[index_j-k] != 'meta':#if labels_yolo[index_j] != 'meta' and labels_yolo[index_j] != 'tab':
-                # se ho : meta, tab, fig 
+        break_count = 0 # voglio avere almeno 3 grafi per ogni arco
+        plot_flow = True
+        while k< 6 and i - k >0: #and k<i+2 :
+            if page[i] == page[i-k]:
+                # Stesso blocco 
+                distances =  disty_vert(bounding_boxes[i], bounding_boxes[i-k])
+                if i >0 and condition_edge(bounding_boxes, labels_yolo, i, i-k, distances):# (labels_yolo[i] != 'equ' and labels_yolo[i-k] != 'equ'):
+                    #array_edges.append([i-k,i]) # arco con quello precedente
+                    add_edge(labels_edge, node_i, node_j, i, k, 1) #BLUE
+                    plot_flow = False
+                    if break_count > 3:
+                        break
+                    break_count = break_count + 1
+            
+                elif plot_flow and labels_yolo[i]!= labels_yolo[i-k] and  (title_condition(labels_yolo, i, i-k) or title_condition(labels_yolo, i-k, i)): # Quello successivo
+                    add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNE
+                    plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
+                    break
+                elif break_count < 2:
+                    add_edge(labels_edge, node_i, node_j, i, k, 0)#RED
                 
-             #   print(labels_yolo[index_j-k], labels_yolo[index_i])    
-                        #    if labels_yolo[index_j-k] == labels_yolo[index_i]:
-                if blu_plot and condition_edge_page(bounding_boxes, labels_yolo, index_j-k, index_i, distances):
-                    j_node.append(index_i)
-                    i_node.append(index_j-k)
-                    labels.append(1)
-                    count_edge = count_edge+1 
-                    blu_plot = False  
-                    #break
-                elif count_edge<1: 
-                    j_node.append(index_i)
-                    i_node.append(index_j-k) 
-                    labels.append(0)
-                    count_edge = count_edge+1
-                        
-                       
-            k=k+1
-           # index_j = index_i + k
-    
-    j = th.tensor(j_node)
-    i = th.tensor(i_node)
-    return labels, i, j
-
-def condition_edge_page(bounding_boxes, labels_yolo, index_i, index_j, distances):
-    return labels_yolo[index_j] in ['para', 'fstline'] \
-        and labels_yolo[index_i] in ['fstline', 'para']
- 
+                    if labels_yolo[i] in ['fig', 'other', 'meta', 'tab']:
+                        break
+                    break_count = break_count + 1
+                
+            else: # Collegamento tra pagine diverse
+                
+                if i >0  and labels_yolo[i-k] != 'meta':# and k>2:
+                    distances =  disty_vert(bounding_boxes[i], bounding_boxes[i-k])
+                    if i >0 and condition_edge(bounding_boxes, labels_yolo, i, i-k, distances):# (labels_yolo[i] != 'equ' and labels_yolo[i-k] != 'equ'):
+                        #array_edges.append([i-k,i]) # arco con quello precedente
+                        add_edge(labels_edge, node_i, node_j, i, k, 1) #BLUE
+                        plot_flow = False
+                        if break_count > 3:
+                            break
+                        break_count = break_count + 1
+                
+                    elif plot_flow and labels_yolo[i]!= labels_yolo[i-k] and  (title_condition(labels_yolo, i, i-k) or title_condition(labels_yolo, i-k, i)): # Quello successivo
+                        add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNE
+                        plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
+                        break
+                    elif break_count < 2:
+                        add_edge(labels_edge, node_i, node_j, i, k, 0)#RED
+                    
+                        if labels_yolo[i] in ['fig', 'other', 'meta', 'tab']:
+                            break
+                        break_count = break_count + 1
+            k = k + 1
+        
+    return node_i, node_j, labels_edge
 
 def condition_edge(bounding_boxes, labels_yolo, index_i, index_j, distances):
     return abs(distances) < 15 and (labels_yolo[index_i]== labels_yolo[index_j] \
@@ -131,13 +126,13 @@ def get_color(name_class):
         class_lab = 'black'
     return class_lab
 
-def min_disty_vert(box1, box2):
+def disty_vert(box1, box2):
     distY = box2[1] - box1[3] # trovo distanza con quelle sotto 
     # vertice alto -> box2  (y0)
     # vertice basso -> box1 (y1)
     return distY
 
-def min_distx_oriz(box1, box2):
+def distx_oriz(box1, box2):
     distX = (box2[2] - box1[2])  # trovo distanza con quelle a dx 
     return distX
 
@@ -248,20 +243,21 @@ def plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, n
             lab = []
             num_page =num_page + 1
 
-def get_graph():
+def get_graph_yolo():
     path_image = 'zexp_yolo_9_hrdh/images/'
     path_json = 'zexp_yolo_9_hrdh/json_yolo/'
     
     if not os.path.exists('zexp_yolo_9_hrdh/savepred_2classi/'):
          os.makedirs('zexp_yolo_9_hrdh/savepred_2classi')
     array_graph = []
+    arr_page =[]
     list_json = os.listdir(path_json)
     for d in list_json: # d = 'ACL_P11-1008.json' 
         new_cent = []
         new_bb = []
+       
         num_page = 0
         lab = []
-      #  print(d)
         file_json =  path_json + d
         path_new_im = 'zexp_yolo_9_hrdh/savebox/'
         if not os.path.exists(path_new_im):
@@ -273,23 +269,24 @@ def get_graph():
             bounding_boxes, page, labels_yolo = get_info_json(data)
             centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in bounding_boxes]
 
-            labels, i, j = get_nodes(bounding_boxes, labels_yolo, page)      
+          #  labels, i, j = get_nodes2(bounding_boxes, labels_yolo, page)    
+            labels, i, j = get_nodes(bounding_boxes, labels_yolo, page)
             name = d.replace('.json', '')
 
             image, _ = get_name(path_image, name, page, 0)
-            
-            # if image != None:
-            #     draw = ImageDraw.Draw(image)
-            #     plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
-            #                    num_page, lab, path_new_im, bounding_boxes, page, 
-            #                    labels_yolo, centroids, labels, i, j, name, image)
+            save_image = False
+            if save_image and  image != None:
+                draw = ImageDraw.Draw(image)
+                plot_edge_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
+                               num_page, lab, path_new_im, bounding_boxes, page, 
+                               labels_yolo, centroids, labels, i, j, name, image)
 
 
             n_bb = [(normalize_bounding_box(box, 596, 842)) for box in bounding_boxes ]
             n_centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in n_bb ]
             
-             # Graph
-            g = dgl.graph((i, j))
+            #  # Graph
+            g = dgl.graph((i, j))   
             
             g.edata['label'] = th.tensor(labels)
 
@@ -297,16 +294,17 @@ def get_graph():
             g.ndata['centroids'] = th.tensor(n_centroids)
             g.ndata['bb'] = th.tensor(bounding_boxes)
             
-            # relative_coordinates = calculate_relative_coordinates(n_bb)
-            # g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
+            relative_coordinates = calculate_relative_coordinates(n_bb)
+            g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
 
-            # encoded_labels = processing_lab(labels_yolo)
+            encoded_labels = processing_lab(labels_yolo)
 
-            # print(len(encoded_labels), len(n_centroids),  len(bounding_boxes))
-            # g.ndata['labels'] = th.tensor(encoded_labels) 
+          #  print(len(encoded_labels), len(n_centroids),  len(bounding_boxes))
+            g.ndata['labels'] = th.tensor(encoded_labels) 
 
             array_graph.append(g)
-    return array_graph
+            arr_page.append(page)
+    return array_graph, np.concatenate(arr_page, axis=0)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="...")
@@ -314,7 +312,7 @@ if __name__ == '__main__':
         
     #'exp_yolo_9/json_yolo/ACL_P11-1008_5.json' #ACL_2020.acl-main.99_0.json'
   
-    array_graph= get_graph()
+    array_graph= get_graph_yolo()
    # print(array_graph)
     bg_train = dgl.batch(array_graph) # num_nodes=725391, num_edges=811734,
     #bg_train = bg_train.int().to(device)
