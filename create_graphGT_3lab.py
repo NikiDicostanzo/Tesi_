@@ -42,14 +42,15 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
         array_edges = []
         node_i = []
         node_j = []
-     
+
         for i in range(len(data)): 
             k = 1
             break_count = 0 # voglio avere almeno 3 grafi per ogni arco
             plot_flow = True
-            while k< 6 and i - k >0: #and k<i+2 :
+            while k< 6 and i - k >=0: #and k<i+2 :
                 if page[i] == page[i-k]:
                     # Stesso blocco 
+                    #print(title_condition(data, i, i-k), data[i], data[i-k])
                     if i >0 and relation[i]=='connect' and parent[i] == data[i-k]['line_id'] and (data[i]['class'] != 'equ' and data[i-k]['class'] != 'equ'):
                         #array_edges.append([i-k,i]) # arco con quello precedente
                         add_edge(labels_edge, node_i, node_j, i, k, 1) #BLUE
@@ -57,9 +58,8 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
                         if break_count > 3:
                             break
                         break_count = break_count + 1
-                
-                    elif plot_flow and data[i]['class'] != data[i-k]['class'] and  (title_condition(data, i, i-k) or title_condition(data, i-k, i)): # Quello successivo
-                        add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNE
+                    elif plot_flow == True and data[i]['class'] != data[i-k]['class'] and (title_condition(data, i, i-k) ):#or title_condition(data, i-k, i)): # Quello successivo
+                        add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNEùìù
                         plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
                         break
                     elif break_count < 2:
@@ -98,9 +98,12 @@ def add_edge(labels_edge, node_i, node_j, i, k, type_edge):
     node_i.append(i-k)
     node_j.append(i)
     labels_edge.append(type_edge) 
-    
-def title_condition(labels_yolo, s, t):
-    return (labels_yolo[s] in ['sec1','sec2','sec3', 'para', 'equ'] and labels_yolo[t] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
+
+def title_condition(labels, s, t):
+    return (labels[s]['class'] in ['sec1','sec2','sec3', 'para', 'equ'] and labels[t]['class'] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
+
+# def title_condition(labels_yolo, s, t):
+#     return (labels_yolo[s] in ['sec1','sec2','sec3', 'para', 'equ'] and labels_yolo[t] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
 
 def calculate_relative_coordinates(bb, k=5):
     # Assumendo che g.ndata['bb'] contenga le bounding boxes normalizzate
@@ -128,19 +131,6 @@ def normalize_bounding_box(box, image_width, image_height):
     
     return normalized_x0, normalized_y0, normalized_x1, normalized_y1
 
-def get_all_bb_rotolone(page, box):
-    somma_larghezza = 0
-    new_box = []
-    for i in range(len(box)):
-        somma_larghezza = page[i] * 560
-        x0 = box[i][0] + somma_larghezza
-        x1 = box[i][2] + somma_larghezza
-        y0=box[i][1]
-        y1=box[i][3]
-
-        new_box.append([x0,y0,x1,y1])
-
-    return new_box
 
 def processing_lab(labels):
     labels = ['other' if label in ['figcap', 'opara', 'secx','tabcap'] else label for label in labels]
@@ -168,7 +158,7 @@ def save(name,graphs):
     print(graph_path)
     save_graphs(graph_path, graphs)
 
-def get_graphs3(type):
+def get_graphs_gt(type):
     path_json = 'HRDS/' + type +'/'
     list_j = os.listdir(path_json)
     all_graph = []
@@ -179,7 +169,7 @@ def get_graphs3(type):
     for j in list_j:
         print(c)
         json = path_json + j
-        g, page, centroid, text = get_graph3(json)
+        g, page, centroid, text = get_graph_3class(json)
         all_graph.append(g)
         pages.append(page)
         centr.append(centroid)
@@ -188,18 +178,18 @@ def get_graphs3(type):
     return all_graph, np.concatenate(pages, axis=0), np.concatenate(centr, axis=0), np.concatenate(texts, axis=0)
    
 
-def get_graph3(json_file):
+def get_graph_3class(json_file):
     with open(json_file) as f:
         data = json.load(f)
         bounding_boxes, page,relation,parent, labels, text = get_info_json(data)
-        
+
         n_bb = [(normalize_bounding_box(box, 596, 842)) for box in bounding_boxes ]
         centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in n_bb ]
       #  dim = [((box[2] + box[0]), (box[3] - box[1])) for box in n_bb ]
       #  #distances = cdist(centroids, centroids)  # Matrice distanza con ogni punto
 
         i, j, labels_edge = get_edge_node(data, bounding_boxes, page, relation, parent)
-        #print(set(labels))
+        print(set(labels_edge))
         # Graph
         g = dgl.graph((i, j))
         g.edata['label'] = th.tensor(labels_edge)

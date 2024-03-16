@@ -1,7 +1,8 @@
 import torch
+from plot_edge_multipage_YOLO_new import get_graph_yolo
 from create_graphGT import get_one_g, get_graphs
 
-from create_graphGT_3lab import get_graphs3
+from create_graphGT_3lab import get_graphs_gt
 import numpy as np
 
 from plot_edge_multipage_GT_Merge import get_graph_merge_gt
@@ -121,7 +122,9 @@ def model_test(model_name):
 def main_train(model_name, epoch):
     #bg_train = get_one_g()#get_graphs()
   #  train_graphs, _, _ , _= get_graph_merge_gt()
-    train_graphs, _, _ , _= get_graphs3('train')
+  
+    train_graphs, _, _ , _= get_graphs_gt('train')
+  #  train_graphs, _ = get_graph_yolo()
     print('Start Train')
 
     #train_graphs = get_graph()
@@ -138,7 +141,7 @@ def main_train(model_name, epoch):
     model_train(bg_train, bg_val, model_name, epoch)
 
 if __name__ == '__main__':
-    main_train('model_bb_lab_cent_rel5_3class_k2edge6.pth', 400)
+    main_train('model_bb_lab_cent_rel6_3class.pth', 600)
    
    # model_test('model_no_page.pth')
     

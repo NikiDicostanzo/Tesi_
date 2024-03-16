@@ -14,7 +14,6 @@ import networkx as nx
 import numpy as np
 from PIL import Image, ImageDraw
 
-from plot_edge_multipage_YOLO import get_nodes
 from create_graphGT_3lab import add_edge, calculate_relative_coordinates, normalize_bounding_box, processing_lab, title_condition
 
 #from torch_geometric.data import Data
@@ -31,11 +30,89 @@ capire dove si trovano -> calolare la sua lunghezza x!
         però se si trova a dx quindi nella colonna di destra vengono dopo quelli di sx
 '''
 
+def get_nodes(bounding_boxes, labels_yolo, page):
+    j_node = [] 
+    i_node= []
+    labels=[] # per ogni arco metto una labels 
+
+    # considerare i k piu vicini !! 
+    # Dati sono in ordine di lettura
+    count_element_page = 0
+    second_page  = False
+    for index_i in range(len(bounding_boxes)):
+        k = 0
+        #index_j = index_i + k
+        index_j = index_i
+        # voglio solo i k + vicini
+        count_edge = 0
+        blu_plot = True
+        if index_i > 0 and page[index_i] == page[index_i-1] :
+            count_element_page = count_element_page + 1 # conto elementi pagina e azzero quando salvo
+        else:
+            count_element_page = 1
+            blu_plot_new = True
+        while k < 10 and index_j-k >= 0 : #index_j < len(bounding_boxes):
+            distances =  min_disty_vert(bounding_boxes[index_j-k], bounding_boxes[index_i])
+            if page[index_j-k] == page[index_i]: 
+               # print(distances,labels_yolo[index_j-k] , labels_yolo[index_i] )
+                if blu_plot and condition_edge(bounding_boxes, labels_yolo, index_j-k, index_i, distances):
+                  
+                    j_node.append(index_i)
+                    i_node.append(index_j-k)
+                    labels.append(1)
+                    count_edge = count_edge+1 
+                    blu_plot = False  
+                    #break
+                elif count_edge<2: 
+                    j_node.append(index_i)
+                    i_node.append(index_j-k) 
+                    labels.append(0)
+                    #altrimenti cerca a tutti i costi il blu, precedente a index_i
+                    if labels_yolo[index_j-k] in ['sec1', 'sec2', 'sec3', 'equ']:
+                       blu_plot = False   
+                    count_edge = count_edge+1
+                    
+            elif labels_yolo[index_j-k] != 'meta':#if labels_yolo[index_j] != 'meta' and labels_yolo[index_j] != 'tab':
+                # se ho : meta, tab, fig 
+                if blu_plot_new and condition_edge_page(count_element_page, labels_yolo, index_j-k, index_i, page):
+                    j_node.append(index_i)
+                    i_node.append(index_j-k)
+                    labels.append(1)
+                    count_edge = count_edge+1 
+                    blu_plot_new = False  
+                    #break
+                elif count_edge<2: 
+                    j_node.append(index_i)
+                    i_node.append(index_j-k) 
+                    labels.append(0)
+                    count_edge = count_edge+1
+                        
+                    if labels_yolo[index_i] in ['sec1', 'sec2', 'sec3', 'equ']:
+                       blu_plot_new = False   
+        
+            k=k+1
+
+    j = th.tensor(j_node)
+    i = th.tensor(i_node)
+    return labels, i, j
+
+def condition_edge_page(count_element_page, labels_yolo, index_i, index_j, page):
+    if labels_yolo[index_j] in ['para', 'fstline'] and labels_yolo[index_i] in ['para', 'fstline']:
+        return True
+    return False
 
 def condition_edge(bounding_boxes, labels_yolo, index_i, index_j, distances):
-    return abs(distances) < 15 and (labels_yolo[index_i]== labels_yolo[index_j] \
-                                        or labels_yolo[index_i] == 'fstline') \
-                    or (abs(bounding_boxes[index_j][0] - bounding_boxes[index_i][0])>200 and labels_yolo[index_i]== labels_yolo[index_j] and labels_yolo[index_i]!= 'meta')
+  #  print(distances, labels_yolo[index_i], labels_yolo[index_j] )
+    return (0<(distances) < 15 and labels_yolo[index_i]== labels_yolo[index_j] \
+                or (labels_yolo[index_i] == 'fstline' and labels_yolo[index_j] == 'para')) \
+            or (abs(bounding_boxes[index_j][0] - bounding_boxes[index_i][0])>200 \
+                and labels_yolo[index_i]== labels_yolo[index_j] and labels_yolo[index_i]!= 'meta')
+
+def min_disty_vert(box1, box2):
+    distY = box2[1] - box1[3] # trovo distanza con quelle sotto 
+    # vertice alto -> box2  (y0)
+    # vertice basso -> box1 (y1)
+    return distY
  
 def plot_bb(box, labels_yolo, draw):
     index = 0
@@ -161,8 +238,6 @@ def get_graph_yolo():
             # Tutte le informazioni di tutte le pagine 
             bounding_boxes, page, labels_yolo = get_info_json(data)
             centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in bounding_boxes]
-
-          #  labels, i, j = get_nodes2(bounding_boxes, labels_yolo, page)  
               
             labels, i, j = get_nodes(bounding_boxes, labels_yolo, page)
             name = d.replace('.json', '')
@@ -176,7 +251,6 @@ def get_graph_yolo():
                                num_page, lab, path_new_im, bounding_boxes, page, 
                                labels_yolo, centroids, labels, i, j, name, image)
 
-
             n_bb = [(normalize_bounding_box(box, 596, 842)) for box in bounding_boxes ]
             n_centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in n_bb ]
             
@@ -187,7 +261,7 @@ def get_graph_yolo():
 
             #Node Features
             g.ndata['centroids'] = th.tensor(n_centroids)
-            g.ndata['bb'] = th.tensor(bounding_boxes)
+            g.ndata['bb'] = th.tensor(n_bb)
             
             relative_coordinates = calculate_relative_coordinates(n_bb)
             g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)

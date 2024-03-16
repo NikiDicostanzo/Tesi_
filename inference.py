@@ -3,7 +3,7 @@ from plot_edge_multipage_YOLO_new import get_graph_yolo
 from model import Model
 from create_graphGT import get_graph_merge, get_graphs
 import torch.nn.functional as F
-from create_graphGT_3lab import get_graphs3
+from create_graphGT_3lab import get_graphs_gt
 import os
 import dgl
 from PIL import Image, ImageDraw as D
@@ -26,10 +26,10 @@ def get_centr(centr, w, h):
     y = centr[1] * h
     return x, y
 
-def inference(graph_test, model_name):
+def inference(graph_test, model_name, num_class):
     node_features, input, edge_label = get_nfeatures(graph_test)
 
-    out_features = 3
+    out_features = num_class
     hidden = 20
 
     # Carica il modello addestrato
@@ -50,12 +50,16 @@ def inference(graph_test, model_name):
         _, predictions = torch.max(probabilities, dim=1)
        # top_p, top_class = probabilities.topk(3, dim=1)
   
-    print(set(np.array(predictions)))
+    print('qui',set(np.array(predictions)))
     return predictions
 
-def get_images(type):
-    path_json = 'zexp_yolo_9_hrdh/json_yolo/'#'HRDS/' + type +'/'
-    path_image= 'zexp_yolo_9_hrdh/savebox/' #'savebox_no/'#'HRDS/images/' #
+def get_images(type, exp):#TODO CAMBIARE PER YOLO e GT
+    if exp == 'yolo':
+        path_json = 'zexp_yolo_9_hrdh/json_yolo/'
+        path_image= 'zexp_yolo_9_hrdh/savebox/' 
+    else:
+        path_json = 'HRDS/' + type +'/'
+        path_image= 'savebox_no_train/' #'HRDS/images/' 
     list_j = os.listdir(path_json)
     # prendo il nome dal json 
 
@@ -65,7 +69,7 @@ def get_images(type):
         image_list.append(name)
     return path_image, (image_list)
 
-def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions):
+def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp):
     i_node, j_node = graph_test.edges()
     edges = list(zip(i_node.tolist(), j_node.tolist()))
     bb_norm = graph_test.ndata['bb'].tolist()
@@ -94,10 +98,12 @@ def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predic
         #   print(page[edges[i-1][1]],'|', page[v], page[u] )
         if i > 0 and page[edges[i-1][1]] > page[v] and page[u] == 0:
             count = count + 1
-            #TODO GT
-         #   check_folder  = os.path.exists(path_image + image_list[count] + '/')
+           
             #TODO YOLO
-            check_folder  = os.path.exists(path_image)
+            if exp == 'GT':
+                check_folder  = os.path.exists(path_image)
+            else: #TODO GT
+                check_folder  = os.path.exists(path_image + image_list[count] + '/')
 
          #   print(count, check_folder, path_image + image_list[count] + '/')
 
@@ -152,7 +158,7 @@ def plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, la
             wid = 2
            # con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         elif lab[index] == 2:
-            color = 'Cyan'
+            color = 'cyan'
             wid = 2
            # con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
 
@@ -173,9 +179,9 @@ def get_concat_h(im1, im2):
 
 def get_name(path_image, image_list, page, count, u, type_im):
     #TODO PER GT
-   # name_img = path_image + image_list[count] + '/' + image_list[count] + '_' + str(page[u]) + type_im#'.jpg'
+    name_img = path_image + image_list[count] + '/' + image_list[count] + '_' + str(page[u]) + type_im#'.jpg'
     #TODO PER YOLO
-    name_img = path_image + image_list[count] + '_' + str(page[u]) + type_im#'.jpg'
+    #name_img = path_image + image_list[count] + '_' + str(page[u]) + type_im#'.jpg'
     if os.path.exists(name_img):
         image = Image.open(name_img)
         wid = image.width 
@@ -197,25 +203,29 @@ cambio doc :
 
 '''
 
-def main(folder_save, model_name, name):
-    path_image, image_list = get_images('test') #image_list
+def main(folder_save, model_name, name, exp):
+    path_image, image_list = get_images('train', exp) #image_list
    # graph, page, centroids_norm_, image_list =get_graph_merge_gt()#get_graphs('test') 
-   # graph, page, centroids_norm_,_=get_graphs3('test') 
-    graph, page = get_graph_yolo()
+    if exp == 'yolo':
+        graph, page = get_graph_yolo()
+    else:
+        graph, page, centroids_norm_,_= get_graphs_gt('train') 
+   
     graph_test = dgl.batch(graph) # num_nodes=725391, num_edges=811734,
     graph_test = graph_test.int().to(device)
     
     y_true = graph_test.edata['label'] #GT
- #   predictions = inference(graph_test, model_name)
+  #  predictions = inference(graph_test, model_name, 3) # num_class
     
-  #  get_cm(name, np.array(y_true), np.array(predictions))
+    class_names = [0,1,2]
+  #  get_cm(name, np.array(y_true), np.array(predictions),class_names)
    # print(image_list, image_list)
- #   draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions) 
-    draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true) #
+  #  draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions) 
+    draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
 
 
 if __name__ == '__main__':
-    name = 'zedge_true'
+    name = 'bb_lab_cent_rel6_3class'
     folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
     model_name = 'model_' + name + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
-    main(folder_save,model_name, name)
+    main(folder_save,model_name, name, 'gt')

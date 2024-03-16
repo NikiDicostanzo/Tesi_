@@ -102,7 +102,7 @@ def condition_edge_page(count_element_page, labels_yolo, index_i, index_j, page)
 
 def condition_edge(bounding_boxes, labels_yolo, index_i, index_j, distances):
     return abs(distances) < 15 and (labels_yolo[index_i]== labels_yolo[index_j] \
-                                        or labels_yolo[index_i] == 'fstline') \
+                                        or (labels_yolo[index_i] == 'fstline' and  labels_yolo[index_j] in ['para'])) \
                     or (abs(bounding_boxes[index_j][0] - bounding_boxes[index_i][0])>200 and labels_yolo[index_i]== labels_yolo[index_j] and labels_yolo[index_i]!= 'meta')
  
 def plot_bb(box, labels_yolo, draw):
