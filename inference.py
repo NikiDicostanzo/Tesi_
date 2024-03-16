@@ -59,8 +59,9 @@ def get_images(type, exp):#TODO CAMBIARE PER YOLO e GT
         path_image= 'zexp_yolo_9_hrdh/savebox/' 
     else:
         path_json = 'HRDS/' + type +'/'
-        path_image= 'savebox_no_train/' #'HRDS/images/' 
+        path_image= 'savebox_train/' #'HRDS/images/' 
     list_j = os.listdir(path_json)
+   
     # prendo il nome dal json 
 
     image_list = []
@@ -87,30 +88,31 @@ def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predic
     
     check_folder  = True
     check_path(folder_save)
+
     count = 0 # primo doc
     num_page = 0
-   
     for i in range(len(edges)):
         u, v = edges[i]
         #print(page[u], page[v])
         #documento count (es. 10, poi trova 0)
         #if page[edges[i-1][1]] > page[v]: #page[u] == 0:
-        #   print(page[edges[i-1][1]],'|', page[v], page[u] )
+       # print(page[edges[i-1][1]],'|', page[v], page[u] )
         if i > 0 and page[edges[i-1][1]] > page[v] and page[u] == 0:
             count = count + 1
            
             #TODO YOLO
-            if exp == 'GT':
+            if exp == 'yolo':
                 check_folder  = os.path.exists(path_image)
             else: #TODO GT
                 check_folder  = os.path.exists(path_image + image_list[count] + '/')
 
-         #   print(count, check_folder, path_image + image_list[count] + '/')
+            #print(count, check_folder, path_image + image_list[count] + '/')
 
             num_page = 0 # nuovo documento
             new_cent = []
             lab = []
             texts = []
+
         if check_folder:
             if page[u] == page[v]:  # Se la pagina è la stessa, aggiungi i centroidi e le bb
                 new_cent.append(tuple([centroids[u], centroids[v]]))
@@ -122,8 +124,11 @@ def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predic
                 k = i
                 if k < len(edges):
                     u1, v1 = edges[k]
-                image1, width = get_name(path_image, image_list, page, count, u, '.png')
-                image2, _ = get_name(path_image, image_list, page, count, v, '.png')
+                #print(path_image, image_list[count], page[u])
+                image1, width = get_name(path_image, image_list, page, count, u, exp)
+                image2, _ = get_name(path_image, image_list, page, count, v, exp)
+                if image2 == None: # per ultimo 
+                    break
                # print(image_list[count], page[u], page[v],  '|',u, v)
                 # Plotto gli edge del 2 documento a dx
                 while k < len(edges) and page[u] < page[v1] <= page[u] + 1:
@@ -177,11 +182,14 @@ def get_concat_h(im1, im2):
     draw = D.Draw(dst)
     return dst, draw
 
-def get_name(path_image, image_list, page, count, u, type_im):
-    #TODO PER GT
-    name_img = path_image + image_list[count] + '/' + image_list[count] + '_' + str(page[u]) + type_im#'.jpg'
+def get_name(path_image, image_list, page, count, u, exp):
+   
     #TODO PER YOLO
-    #name_img = path_image + image_list[count] + '_' + str(page[u]) + type_im#'.jpg'
+    if exp == 'yolo':
+        name_img = path_image + image_list[count] + '_' + str(page[u]) + '.png'
+    else: #TODO PER GT
+        name_img = path_image + image_list[count] + '/' + image_list[count] + '_' + str(page[u]) + '.jpg'
+
     if os.path.exists(name_img):
         image = Image.open(name_img)
         wid = image.width 
@@ -191,20 +199,10 @@ def get_name(path_image, image_list, page, count, u, type_im):
         #draw = D.Draw(image)
     #draw = D.Draw(image)
     return image, wid   
-''''
-una funzione che prende in input 2 immagini, bb, labels, edge, centroid
-devo creare centroidi -> della prima immagine rimangono cosi nella seconda shifto
-un for per la prima immagine e poi vado avanti con un 
-while per inserire tutte le informazioni della seconda immagine
-stesso doc :
-    page[u] == page[v] -> stessa pagina  
-    page[u] != page[v] -> pagina differente
-cambio doc : 
-
-'''
 
 def main(folder_save, model_name, name, exp):
     path_image, image_list = get_images('train', exp) #image_list
+
    # graph, page, centroids_norm_, image_list =get_graph_merge_gt()#get_graphs('test') 
     if exp == 'yolo':
         graph, page = get_graph_yolo()

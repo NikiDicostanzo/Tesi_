@@ -155,7 +155,7 @@ def load(name):
 def save(name,graphs):
     # save graphs and labels
     graph_path = name+ '_dgl_graph.bin'#os.path.join(
-    print(graph_path)
+   # print(graph_path)
     save_graphs(graph_path, graphs)
 
 def get_graphs_gt(type):
@@ -167,7 +167,7 @@ def get_graphs_gt(type):
     texts = []
     c = 0
     for j in list_j:
-        print(c)
+        #print(c)
         json = path_json + j
         g, page, centroid, text = get_graph_3class(json)
         all_graph.append(g)
@@ -189,7 +189,7 @@ def get_graph_3class(json_file):
       #  #distances = cdist(centroids, centroids)  # Matrice distanza con ogni punto
 
         i, j, labels_edge = get_edge_node(data, bounding_boxes, page, relation, parent)
-        print(set(labels_edge))
+      #  print(set(labels_edge))
         # Graph
         g = dgl.graph((i, j))
         g.edata['label'] = th.tensor(labels_edge)
