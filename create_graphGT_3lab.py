@@ -47,7 +47,7 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
             k = 1
             break_count = 0 # voglio avere almeno 3 grafi per ogni arco
             plot_flow = True
-            while k< 6 and i - k >=0: #and k<i+2 :
+            while k< 16 and i - k >=0: #and k<i+2 :
                 if page[i] == page[i-k]:
                     # Stesso blocco 
                     #print(title_condition(data, i, i-k), data[i], data[i-k])
@@ -58,11 +58,12 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
                         if break_count > 3:
                             break
                         break_count = break_count + 1
-                    elif plot_flow == True and data[i]['class'] != data[i-k]['class'] and (title_condition(data, i, i-k) ):#or title_condition(data, i-k, i)): # Quello successivo
+                    elif plot_flow == True and data[i]['class'] != data[i-k]['class'] and (title_condition(data, i, i-k) or title_condition(data, i-k, i)): # Quello successivo
                         add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNEùìù
                         plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
                         break
                     elif break_count < 2:
+                        #print(title_condition(data, i, i-k), data[i]['class'], data[i-k]['class'])
                         add_edge(labels_edge, node_i, node_j, i, k, 0)#RED
                     
                         if data[i]['is_meta'] ==True or data[i]['class'] in ['fig', 'other']:
