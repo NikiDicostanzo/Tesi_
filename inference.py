@@ -200,30 +200,31 @@ def get_name(path_image, image_list, page, count, u, exp):
     #draw = D.Draw(image)
     return image, wid   
 
-def main(folder_save, model_name, name, exp):
+def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class3):
     path_image, image_list = get_images('train', exp) #image_list
 
    # graph, page, centroids_norm_, image_list =get_graph_merge_gt()#get_graphs('test') 
     if exp == 'yolo':
-        graph, page = get_graph_yolo()
+        graph, page = get_graph_yolo(kr, num_arch_node, class3)
     else:
-        graph, page, centroids_norm_,_= get_graphs_gt('train') 
+        graph, page, centroids_norm_,_= get_graphs_gt('train', kr, num_arch_node,class3) 
    
     graph_test = dgl.batch(graph) # num_nodes=725391, num_edges=811734,
     graph_test = graph_test.int().to(device)
     
     y_true = graph_test.edata['label'] #GT
-  #  predictions = inference(graph_test, model_name, 3) # num_class
-    
-    class_names = [0,1,2]
-  #  get_cm(name, np.array(y_true), np.array(predictions),class_names)
-   # print(image_list, image_list)
-  #  draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions) 
-    draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
+    predictions = inference(graph_test, model_name, num_class) # num_class
+    if class3:
+        class_names = [0,1, 2] 
+    else:
+        class_names = [0,1]
+    get_cm(name, np.array(y_true), np.array(predictions),class_names)
+    draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp) 
+    #draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
 
 
 if __name__ == '__main__':
-    name = 'bb_lab_cent_rel6_3class'
+    name = 'bb_lab_cent_rel5_2class_k1'
     folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
     model_name = 'model_' + name + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
-    main(folder_save,model_name, name, 'gt')
+    main(folder_save,model_name, name, 'yolo', 5, 2, 1, False) # type, kr, num_class, num_arch_node

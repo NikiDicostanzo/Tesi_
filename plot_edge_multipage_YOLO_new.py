@@ -30,7 +30,7 @@ capire dove si trovano -> calolare la sua lunghezza x!
         però se si trova a dx quindi nella colonna di destra vengono dopo quelli di sx
 '''
 
-def get_nodes(bounding_boxes, labels_yolo, page):
+def get_nodes(bounding_boxes, labels_yolo, page, num_arch_node, class3):
     j_node = [] 
     i_node= []
     labels=[] # per ogni arco metto una labels 
@@ -40,7 +40,7 @@ def get_nodes(bounding_boxes, labels_yolo, page):
     count_element_page = 0
     second_page  = False
     for index_i in range(len(bounding_boxes)):
-        k = 0
+        k = 1
         #index_j = index_i + k
         index_j = index_i
         # voglio solo i k + vicini
@@ -55,7 +55,7 @@ def get_nodes(bounding_boxes, labels_yolo, page):
             distances =  min_disty_vert(bounding_boxes[index_j-k], bounding_boxes[index_i])
             if page[index_j-k] == page[index_i]: 
                # print(distances,labels_yolo[index_j-k] , labels_yolo[index_i] )
-                if blu_plot and condition_edge(bounding_boxes, labels_yolo, index_j-k, index_i, distances):
+                if blu_plot==True and condition_edge(bounding_boxes, labels_yolo, index_j-k, index_i, distances):
                   
                     j_node.append(index_i)
                     i_node.append(index_j-k)
@@ -63,7 +63,14 @@ def get_nodes(bounding_boxes, labels_yolo, page):
                     count_edge = count_edge+1 
                     blu_plot = False  
                     #break
-                elif count_edge<2: 
+                elif class3==True  and blu_plot == True and (title_condition(labels_yolo, index_i, index_j-k)or title_condition(labels_yolo, index_j-k, index_i)): # Quello successivo
+                        j_node.append(index_i)
+                        i_node.append(index_j-k)
+                        labels.append(2)
+                        count_edge = count_edge+1 
+                        blu_plot = False
+                       # break
+                elif count_edge< num_arch_node: 
                     j_node.append(index_i)
                     i_node.append(index_j-k) 
                     labels.append(0)
@@ -81,7 +88,13 @@ def get_nodes(bounding_boxes, labels_yolo, page):
                     count_edge = count_edge+1 
                     blu_plot_new = False  
                     #break
-                elif count_edge<2: 
+                elif class3==True and blu_plot_new == True and (title_condition(labels_yolo, index_i, index_j-k)or title_condition(labels_yolo, index_j-k, index_i)): # Quello successivo
+                        j_node.append(index_i)
+                        i_node.append(index_j-k)
+                        labels.append(2)
+                        blu_plot_new = False
+                       # break
+                elif count_edge< num_arch_node: 
                     j_node.append(index_i)
                     i_node.append(index_j-k) 
                     labels.append(0)
@@ -95,6 +108,10 @@ def get_nodes(bounding_boxes, labels_yolo, page):
     j = th.tensor(j_node)
     i = th.tensor(i_node)
     return labels, i, j
+
+def title_condition(labels_yolo, s, t):
+    return (labels_yolo[s] in ['sec1','sec2','sec3', 'para', 'equ'] and labels_yolo[t] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
+
 
 def condition_edge_page(count_element_page, labels_yolo, index_i, index_j, page):
     if labels_yolo[index_j] in ['para', 'fstline'] and labels_yolo[index_i] in ['para', 'fstline']:
@@ -213,7 +230,7 @@ def plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, nu
             save_im = path_new_im + name + '_' + str(page[b]) + '.png'
             image.save(save_im)
 
-def get_graph_yolo():
+def get_graph_yolo(kr, num_arch_node, class3):
     path_image = 'zexp_yolo_9_hrdh/images/'
     path_json = 'zexp_yolo_9_hrdh/json_yolo/'
     
@@ -239,7 +256,7 @@ def get_graph_yolo():
             bounding_boxes, page, labels_yolo = get_info_json(data)
             centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in bounding_boxes]
               
-            labels, i, j = get_nodes(bounding_boxes, labels_yolo, page)
+            labels, i, j = get_nodes(bounding_boxes, labels_yolo, page, num_arch_node, class3)
             name = d.replace('.json', '')
 
             image, _ = get_name(path_image, name, page, 0)
@@ -263,7 +280,7 @@ def get_graph_yolo():
             g.ndata['centroids'] = th.tensor(n_centroids)
             g.ndata['bb'] = th.tensor(n_bb)
             
-            relative_coordinates = calculate_relative_coordinates(n_bb)
+            relative_coordinates = calculate_relative_coordinates(n_bb, kr)
             g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
 
             encoded_labels = processing_lab(labels_yolo)

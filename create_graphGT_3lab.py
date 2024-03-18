@@ -37,12 +37,12 @@ def get_info_json(data):
     return bounding_boxes, page,relation,parent, labels, text
 
 #creare i labels degli archi 
-def get_edge_node(data, bounding_boxes, page, relation, parent):
+def get_edge_node(data, bounding_boxes, page, relation, parent, num_arch_node, class3):
         labels_edge = []
         array_edges = []
         node_i = []
         node_j = []
-
+        #num_arch_node = 1
         for i in range(len(data)): 
             k = 1
             break_count = 0 # voglio avere almeno 3 grafi per ogni arco
@@ -55,14 +55,14 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
                         #array_edges.append([i-k,i]) # arco con quello precedente
                         add_edge(labels_edge, node_i, node_j, i, k, 1) #BLUE
                         plot_flow = False
-                        if break_count > 3:
+                        if break_count > num_arch_node:
                             break
                         break_count = break_count + 1
-                    elif plot_flow == True and data[i]['class'] != data[i-k]['class'] and (title_condition(data, i, i-k) or title_condition(data, i-k, i)): # Quello successivo
+                    elif class3 and plot_flow == True and data[i]['class'] != data[i-k]['class'] and (title_condition(data, i, i-k) or title_condition(data, i-k, i)): # Quello successivo
                         add_edge(labels_edge, node_i, node_j, i, k, 2) #CYNEùìù
                         plot_flow = False # di precedente ne ha solo uno, una volta che lo trova stop
                         break
-                    elif break_count < 2:
+                    elif break_count < num_arch_node:
                         #print(title_condition(data, i, i-k), data[i]['class'], data[i-k]['class'])
                         add_edge(labels_edge, node_i, node_j, i, k, 0)#RED
                     
@@ -77,15 +77,15 @@ def get_edge_node(data, bounding_boxes, page, relation, parent):
                           #  array_edges.append([i-k,i]) # arco con quello precedente
                             add_edge(labels_edge, node_i, node_j, i, k, 1)
                             plot_flow = False
-                            if break_count > 2:
+                            if break_count > num_arch_node:
                                 break
                             break_count = break_count + 1
                            #Titolo  # Quello precedente
-                        elif plot_flow == True and (title_condition(data, i, i-k)or title_condition(data, i-k, i)): # Quello successivo
+                        elif class3 and plot_flow == True and (title_condition(data, i, i-k)or title_condition(data, i-k, i)): # Quello successivo
                             add_edge(labels_edge, node_i, node_j, i, k, 2)
                             plot_flow = False
                             break
-                        elif break_count < 2:#prova == True: #salvo solo 1 rosso
+                        elif break_count < num_arch_node:#prova == True: #salvo solo 1 rosso
                             add_edge(labels_edge, node_i, node_j, i, k, 0)
                             if data[i]['is_meta'] == True or data[i]['class'] in ['fig', 'tab', 'tabcap', 'opara', 'figcap']:#in yolo ho stolo other :|
                                 break
@@ -106,7 +106,7 @@ def title_condition(labels, s, t):
 # def title_condition(labels_yolo, s, t):
 #     return (labels_yolo[s] in ['sec1','sec2','sec3', 'para', 'equ'] and labels_yolo[t] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
 
-def calculate_relative_coordinates(bb, k=5):
+def calculate_relative_coordinates(bb, k):#=5):
     # Assumendo che g.ndata['bb'] contenga le bounding boxes normalizzate
     relative_coordinates = []
     for i in range(len(bb)):
@@ -159,7 +159,7 @@ def save(name,graphs):
    # print(graph_path)
     save_graphs(graph_path, graphs)
 
-def get_graphs_gt(type):
+def get_graphs_gt(type, kr, num_arch_node, class3):
     path_json = 'HRDS/' + type +'/'
     list_j = os.listdir(path_json)
     all_graph = []
@@ -170,7 +170,7 @@ def get_graphs_gt(type):
     for j in list_j:
         #print(c)
         json = path_json + j
-        g, page, centroid, text = get_graph_3class(json)
+        g, page, centroid, text = get_graph_3class(json, kr, num_arch_node, class3)
         all_graph.append(g)
         pages.append(page)
         centr.append(centroid)
@@ -179,7 +179,7 @@ def get_graphs_gt(type):
     return all_graph, np.concatenate(pages, axis=0), np.concatenate(centr, axis=0), np.concatenate(texts, axis=0)
    
 
-def get_graph_3class(json_file):
+def get_graph_3class(json_file, kr, num_arch_node, class3):
     with open(json_file) as f:
         data = json.load(f)
         bounding_boxes, page,relation,parent, labels, text = get_info_json(data)
@@ -189,7 +189,7 @@ def get_graph_3class(json_file):
       #  dim = [((box[2] + box[0]), (box[3] - box[1])) for box in n_bb ]
       #  #distances = cdist(centroids, centroids)  # Matrice distanza con ogni punto
 
-        i, j, labels_edge = get_edge_node(data, bounding_boxes, page, relation, parent)
+        i, j, labels_edge = get_edge_node(data, bounding_boxes, page, relation, parent, num_arch_node, class3)
       #  print(set(labels_edge))
         # Graph
         g = dgl.graph((i, j))
@@ -213,7 +213,7 @@ def get_graph_3class(json_file):
     #    g.ndata['dim'] = th.tensor(dim)
       #  g.ndata['page'] = th.tensor(page)
         # Calcola le coordinate relative per ogni nodo
-        relative_coordinates = calculate_relative_coordinates(n_bb)
+        relative_coordinates = calculate_relative_coordinates(n_bb, kr)
         g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
 
         encoded_labels = processing_lab(labels)
@@ -234,7 +234,6 @@ def get_graph_merge(i, j, labels_edge, bounding_boxes, labels, page ):
     #Node Features
     g.ndata['centroids'] = th.tensor(centroids)
 
-    # bb_all = get_all_bb_rotolone(page, bounding_boxes)
     # num_page = page[len(page)-1]
 
     # n_bb_all = [(normalize_bounding_box(box, 596*num_page, 842)) for box in bb_all ]

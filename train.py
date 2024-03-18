@@ -28,7 +28,7 @@ from model3 import Model3
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def model_train(graph, val_graph, name_model, epoch):
+def model_train(graph, val_graph, name_model, epoch, num_outc):
     print(graph)
 
     node_features, input, edge_label = get_nfeatures(graph)
@@ -39,7 +39,7 @@ def model_train(graph, val_graph, name_model, epoch):
     print(unique_values, counts)  #[0 1 2] [ 53094 587187 106568]
     print('node_features:', node_features.shape, '|', 'input', input, '|','edge_label', edge_label.shape)
    
-    out_features = 3
+    out_features = num_outc
     hidden = 20
     #model = EdgeClassifier(graph.num_edges(), 1, 0.2, node_features, 300, hidden, device, False)
     model = Model(input, hidden , out_features).to(device)
@@ -119,12 +119,14 @@ def model_test(model_name):
 
     print('Test Accuracy: {:.4f}'.format(acc)) # Test Accuracy: 0.9009
     
-def main_train(model_name, epoch):
+def main_train(model_name, epoch, kr, num_arch_node, exp, class3):
     #bg_train = get_one_g()#get_graphs()
   #  train_graphs, _, _ , _= get_graph_merge_gt()
-  
-    train_graphs, _, _ , _= get_graphs_gt('train')
-  #  train_graphs, _ = get_graph_yolo()
+    if exp == 'yolo':
+      train_graphs, _ = get_graph_yolo(kr, num_arch_node, class3)
+    else:
+      train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
+
     print('Start Train')
 
     #train_graphs = get_graph()
@@ -138,11 +140,12 @@ def main_train(model_name, epoch):
   #  bg_val = bg_val.int().to(device)
   #  print(bg_train, '\n', bg_val)
 
-    model_train(bg_train, bg_val, model_name, epoch)
+    model_train(bg_train, bg_val, model_name, epoch, 2) #TODO num_outc-> 3class == False
 
 if __name__ == '__main__':
-    main_train('model_bb_lab_cent_rel6_3class.pth', 600)
-   
+    main_train('model_bb_lab_cent_rel6_2class_k1.pth', 700, 6, 1, 'gt', False) 
+    #kr = num_dist_rel || num_arch_node = # edge x nodo | 3class = true
+
    # model_test('model_no_page.pth')
     
 
