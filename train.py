@@ -87,7 +87,7 @@ def get_nfeatures(graph):
   #  page = graph.ndata['page'].float().unsqueeze(-1)
     centroids = graph.ndata['centroids'] 
     bb = graph.ndata['bb']      
-    lab = graph.ndata['labels'].float().unsqueeze(1)
+    lab = graph.ndata['labels'].float()#.unsqueeze(1)
     coord_rel = graph.ndata['relative_coordinates'].float() 
     coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
   
@@ -150,6 +150,14 @@ def main_train(model_name, epoch, kr, num_arch_node, exp, class3):
       train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
     #  train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
     
+    dimensione_desiderata = 9
+    for graph in train_graphs:
+      # Assicurati che tutte le feature dei nodi abbiano la stessa dimensione e tipo di dati
+      if 'labels' not in graph.ndata or graph.ndata['labels'].shape[1] != dimensione_desiderata:
+          # Crea una feature di placeholder con la dimensione desiderata
+          placeholder = torch.zeros((graph.number_of_nodes(), dimensione_desiderata), dtype=torch.float64)
+          graph.ndata['labels'] = placeholder
+
     print('Start Train')
     bg_train = dgl.batch(train_graphs) # num_nodes=725391, num_edges=811734,
     bg_train = bg_train.int().to(device)

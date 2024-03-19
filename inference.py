@@ -208,7 +208,15 @@ def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class
         graph, page = get_graph_yolo(kr, num_arch_node, class3, 'train')
     else:
         graph, page, centroids_norm_,_= get_graphs_gt('train', kr, num_arch_node,class3) 
-   
+    dimensione_desiderata = 9
+    
+    for g in graph:
+      # Assicurati che tutte le feature dei nodi abbiano la stessa dimensione e tipo di dati
+      if 'labels' not in g.ndata or g.ndata['labels'].shape[1] != dimensione_desiderata:
+          # Crea una feature di placeholder con la dimensione desiderata
+          placeholder = torch.zeros((g.number_of_nodes(), dimensione_desiderata), dtype=torch.float64)
+          g.ndata['labels'] = placeholder
+
     graph_test = dgl.batch(graph) # num_nodes=725391, num_edges=811734,
     graph_test = graph_test.int().to(device)
     
@@ -224,7 +232,7 @@ def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class
 
 
 if __name__ == '__main__':
-    name = 'bb_lab_cent_rel5_3class_k2_equ_yolo_mmm_val'
+    name = 'bb_lab_cent_5rel5_3class_k2_yolo_mmm'
     folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
     model_name = 'model_' + name + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
     main(folder_save,model_name, name, 'yolo', 5, 3, 2, True) # type, kr, num_class, num_arch_node

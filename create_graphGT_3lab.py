@@ -164,8 +164,13 @@ def processing_lab(labels):
     labels = ['other' if label in ['figcap', 'opara', 'secx','tabcap'] else label for label in labels]
     labels = ['meta' if label in ['mail', 'foot', 'title','affili', 'fnote', 'author'] else label for label in labels]
 
-    le = LabelEncoder()
-    encoded_labels = le.fit_transform(labels)
+    #le = LabelEncoder()
+    #encoded_labels = le.fit_transform(labels)
+    ohe = OneHotEncoder(sparse=False)
+    
+    # Adatta e trasforma le etichette
+    encoded_labels = ohe.fit_transform(np.array(labels).reshape(-1, 1))
+    #print(encoded_labels)
     return encoded_labels
 
 def get_one_g():
