@@ -51,7 +51,7 @@ def get_edge_node(data, bounding_boxes, page, relation, parent, num_arch_node, c
                 if page[i] == page[i-k]:
                     # Stesso blocco 
                     #print(title_condition(data, i, i-k), data[i], data[i-k])
-                    if i >0 and relation[i]=='connect' and parent[i] == data[i-k]['line_id'] and (data[i]['class'] != 'equ' and data[i-k]['class'] != 'equ'):
+                    if i >0 and relation[i]=='connect' and parent[i] == data[i-k]['line_id']:#TODO and (data[i]['class'] != 'equ' and data[i-k]['class'] != 'equ'):
                         #array_edges.append([i-k,i]) # arco con quello precedente
                         add_edge(labels_edge, node_i, node_j, i, k, 1) #BLUE
                         plot_flow = False
@@ -106,22 +106,49 @@ def title_condition(labels, s, t):
 # def title_condition(labels_yolo, s, t):
 #     return (labels_yolo[s] in ['sec1','sec2','sec3', 'para', 'equ'] and labels_yolo[t] in ['para', 'equ','fstline', 'sec1','sec2','sec3'])
 
-def calculate_relative_coordinates(bb, k):#=5):
-    # Assumendo che g.ndata['bb'] contenga le bounding boxes normalizzate
+# def calculate_relative_coordinates(bb, k):#=5):
+#     # Assumendo che g.ndata['bb'] contenga le bounding boxes normalizzate
+#     relative_coordinates = []
+#     for i in range(len(bb)):
+       
+#         current_bb = np.array(bb[i])
+#         if i + k < len(bb):
+#             next_bbs = np.array(bb[i+1:i+k+1])
+#         else:
+#             next_bbs = np.zeros(k) #np.array([]) #TODO rivedere
+#         # Calcola la differenza relativa tra la bounding box corrente e quelle dei k vicini successivi
+#        # relative_diffs = [np.abs(current_bb - next_bb) for next_bb in next_bbs]
+#         relative_diffs = [abs(next_bb - current_bb) for next_bb in next_bbs]
+
+#         relative_coordinates.append(relative_diffs)
+#     return np.array(relative_coordinates)
+
+def calculate_relative_coordinates(bb, k):
     relative_coordinates = []
     for i in range(len(bb)):
-       
         current_bb = np.array(bb[i])
+        # Calcola i k vicini precedenti
+        if i - k >= 0:
+            prev_bbs = np.array(bb[i-k:i])
+        else:
+            prev_bbs = np.zeros(k) # o qualsiasi valore di default
+        # Calcola i k vicini successivi
         if i + k < len(bb):
             next_bbs = np.array(bb[i+1:i+k+1])
         else:
-            next_bbs = np.zeros(k) #np.array([]) #TODO rivedere
-        # Calcola la differenza relativa tra la bounding box corrente e quelle dei k vicini successivi
-       # relative_diffs = [np.abs(current_bb - next_bb) for next_bb in next_bbs]
-        relative_diffs = [abs(next_bb - current_bb) for next_bb in next_bbs]
-
+            next_bbs = np.zeros(k) # o qualsiasi valore di default
+        
+        # Calcola la differenza relativa tra la bounding box corrente e quelle dei k vicini precedenti e successivi
+        relative_diffs_prev = [abs(prev_bb - current_bb) for prev_bb in prev_bbs]
+        relative_diffs_next = [abs(next_bb - current_bb) for next_bb in next_bbs]
+        
+        # Combina le differenze relative dei vicini precedenti e successivi
+        relative_diffs = np.concatenate([relative_diffs_prev, relative_diffs_next], axis = 0)
+        
         relative_coordinates.append(relative_diffs)
-    return np.array(relative_coordinates)
+
+       # print(relative_diffs)#, relative_coordinates)
+    return relative_coordinates
 
 def normalize_bounding_box(box, image_width, image_height):
     # Normalizzazione diretta delle coordinate x e y

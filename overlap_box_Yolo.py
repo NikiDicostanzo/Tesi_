@@ -206,7 +206,7 @@ import natsort
 # Merge su tutte le immagini
 def merge_all_image(folder, type_img):
     # txt e img devono avere stesso nome!
-    path_images = 'zexp_yolo_9_hrdh/images/' #folder + 'images/'
+    path_images = '../dataset_yolo_hrds/test/images/'#'zexp_yolo_9_hrdh/images/' #folder + 'images/'
     path_txt = folder + 'labels/'
     images_detect = folder + 'detect/'
 
@@ -271,5 +271,5 @@ if __name__ == '__main__':
     #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
     #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
 
-    folder = 'yolo_hrdh_mix_672_e15/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
+    folder = 'yolo_hrdh_mix_672_e15_test_val/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
     merge_all_image(folder, '.png')

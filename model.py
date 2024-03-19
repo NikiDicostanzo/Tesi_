@@ -11,15 +11,21 @@ class SAGE(nn.Module):
     def __init__(self, in_feats, hid_feats, out_feats):
         super().__init__()
         self.conv1 = SAGEConv(
-            in_feats=in_feats, out_feats=hid_feats, aggregator_type='mean')#'mean') #'lstm')#pool
+            in_feats=in_feats, out_feats=hid_feats, aggregator_type='mean')#, norm=nn.BatchNorm1d(hid_feats))#'mean') #'lstm')#pool
+        print(self.conv1 )
         self.conv2 = SAGEConv(
-            in_feats=hid_feats, out_feats=out_feats, aggregator_type='mean')#'mean')
-
+            in_feats=hid_feats, out_feats=hid_feats, aggregator_type='mean')#, norm=nn.BatchNorm1d(out_feats))#'mean')
+        #print(self.conv2
+        self.conv3 = SAGEConv(
+            in_feats=hid_feats, out_feats=out_feats, aggregator_type='mean')
+        
     def forward(self, graph, inputs):
         # inputs are features of nodes
         h = self.conv1(graph, inputs)
         h = F.relu(h)
         h = self.conv2(graph, h)
+        h = F.relu(h)
+        h = self.conv3(graph, h)
         return h
 
 class MLPPredictor(nn.Module):

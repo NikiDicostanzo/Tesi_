@@ -33,6 +33,8 @@ def model_train(graph, val_graph, name_model, epoch, num_outc):
 
     node_features, input, edge_label = get_nfeatures(graph)
     print(type(edge_label))
+    #node_features_val, _, edge_label_val = get_nfeatures(val_graph)
+
     #node_features_val, input_val, edge_label_val = get_nfeatures(val_graph)
     a = np.array(edge_label)
     unique_values, counts = np.unique(a, return_counts=True)
@@ -43,8 +45,12 @@ def model_train(graph, val_graph, name_model, epoch, num_outc):
     hidden = 20
     #model = EdgeClassifier(graph.num_edges(), 1, 0.2, node_features, 300, hidden, device, False)
     model = Model(input, hidden , out_features).to(device)
-    opt = torch.optim.Adam(model.parameters())
+  #  model = Model3(input, hidden , out_features, 1).to(device)
 
+    opt = torch.optim.Adam(model.parameters())#, lr=1e-08)
+    #opt = torch.optim.SGD(model.parameters(), lr=0.1)
+
+    min_val_loss = 100000000
     for epoch in range(epoch):
         logit = model(graph, node_features)   
         #print(logit, '/n',edge_label.squeeze())
@@ -58,6 +64,21 @@ def model_train(graph, val_graph, name_model, epoch, num_outc):
         if epoch % 10 == 0:
              print('Epoch {:05d} | Loss {:.4f} | Accuracy train set {:.4f}'
                    .format(epoch, loss.item(), acc))
+             
+        # Calcola la perdita e l'accuratezza sul set di validazione
+        # model.eval() # Imposta il modello in modalità di valutazione
+        # with torch.no_grad(): # Disabilita il calcolo del gradiente per la valutazione
+        #     val_logit = model(val_graph, node_features_val)
+        #     val_loss = F.cross_entropy(val_logit, edge_label_val.squeeze())
+        #     val_acc = accuracy(val_logit, edge_label_val)
+        #     if epoch % 10 == 0:
+        #       print('Validation Loss: {:.4f} | Validation Accuracy: {:.4f}'
+        #             .format(val_loss.item(), val_acc))
+
+        # # Salva il modello se mostra le migliori prestazioni sul set di validazione
+        # if val_loss < min_val_loss:
+        #     min_val_loss = val_loss
+        #     torch.save(model.state_dict(), 'best_model.pth')
     # Salva il modello addestrato
     torch.save(model.state_dict(), name_model)
 
@@ -123,27 +144,24 @@ def main_train(model_name, epoch, kr, num_arch_node, exp, class3):
     #bg_train = get_one_g()#get_graphs()
   #  train_graphs, _, _ , _= get_graph_merge_gt()
     if exp == 'yolo':
-      train_graphs, _ = get_graph_yolo(kr, num_arch_node, class3)
+      train_graphs, _ = get_graph_yolo(kr, num_arch_node, class3, 'train')
+      #val_graphs, _ = get_graph_yolo(kr, num_arch_node, class3, 'val')
     else:
       train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
-
-    print('Start Train')
-
-    #train_graphs = get_graph()
-  #  train_graphs, val_graphs = train_test_split(graph_train, test_size=0.01)
+    #  train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
     
+    print('Start Train')
     bg_train = dgl.batch(train_graphs) # num_nodes=725391, num_edges=811734,
     bg_train = bg_train.int().to(device)
 
-    bg_val = ''
-  #  bg_val = dgl.batch(val_graphs) # num_nodes=7523, num_edges=8389,
-  #  bg_val = bg_val.int().to(device)
-  #  print(bg_train, '\n', bg_val)
+    bg_val = ''#dgl.batch(val_graphs) # num_nodes=7523, num_edges=8389,
+    #bg_val = bg_val.int().to(device)
+    print(bg_train, '\n', bg_val)
 
-    model_train(bg_train, bg_val, model_name, epoch, 2) #TODO num_outc-> 3class == False
+    model_train(bg_train, bg_val, model_name, epoch, 3) #TODO num_outc-> 3class == False
 
 if __name__ == '__main__':
-    main_train('model_bb_lab_cent_rel6_2class_k1.pth', 700, 6, 1, 'gt', False) 
+    main_train('model_bb_lab_cent_5rel5_3class_k2_yolo_mmm.pth', 700, 5, 2, 'yolo', True) 
     #kr = num_dist_rel || num_arch_node = # edge x nodo | 3class = true
 
    # model_test('model_no_page.pth')

@@ -205,7 +205,7 @@ def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class
 
    # graph, page, centroids_norm_, image_list =get_graph_merge_gt()#get_graphs('test') 
     if exp == 'yolo':
-        graph, page = get_graph_yolo(kr, num_arch_node, class3)
+        graph, page = get_graph_yolo(kr, num_arch_node, class3, 'train')
     else:
         graph, page, centroids_norm_,_= get_graphs_gt('train', kr, num_arch_node,class3) 
    
@@ -224,7 +224,7 @@ def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class
 
 
 if __name__ == '__main__':
-    name = 'bb_lab_cent_rel5_2class_k1'
+    name = 'bb_lab_cent_rel5_3class_k2_equ_yolo_mmm_val'
     folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
     model_name = 'model_' + name + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
-    main(folder_save,model_name, name, 'yolo', 5, 2, 1, False) # type, kr, num_class, num_arch_node
+    main(folder_save,model_name, name, 'yolo', 5, 3, 2, True) # type, kr, num_class, num_arch_node

@@ -120,8 +120,8 @@ def condition_edge_page(count_element_page, labels_yolo, index_i, index_j, page)
 
 def condition_edge(bounding_boxes, labels_yolo, index_i, index_j, distances):
   #  print(distances, labels_yolo[index_i], labels_yolo[index_j] )
-    return (0<(distances) < 15 and labels_yolo[index_i]== labels_yolo[index_j] \
-                or (labels_yolo[index_i] == 'fstline' and labels_yolo[index_j] == 'para')) \
+    return (0<(distances) < 20 and labels_yolo[index_i]== labels_yolo[index_j] \
+                or (labels_yolo[index_i] in ['fstline','para'] and labels_yolo[index_j] in ['para', 'equ'])) \
             or (abs(bounding_boxes[index_j][0] - bounding_boxes[index_i][0])>200 \
                 and labels_yolo[index_i]== labels_yolo[index_j] and labels_yolo[index_i]!= 'meta')
 
@@ -196,8 +196,8 @@ def get_concat_h(im1, im2):
     draw = ImageDraw.Draw(dst)
     return dst, draw
 
-def plot_edge(name, page, new_cent, u, v, image1, image2, lab, index):
-    path_save_conc = 'zexp_yolo_9_hrdh/savepred_2classi/' + name + '_' + str(page[u]) +'_'+ str(page[v]) + '.png'# +'_'+ str(index) + '.png'
+def plot_edge(name, page, new_cent, u, v, image1, image2, lab, index, save_path_pred):
+    path_save_conc = save_path_pred + name + '_' + str(page[u]) +'_'+ str(page[v]) + '.png'# +'_'+ str(index) + '.png'
     con_img, con_draw = get_concat_h(image1, image2)#.save(path_save_conc)
     index = 0
     for cu, cv in new_cent:
@@ -230,12 +230,20 @@ def plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, nu
             save_im = path_new_im + name + '_' + str(page[b]) + '.png'
             image.save(save_im)
 
-def get_graph_yolo(kr, num_arch_node, class3):
-    path_image = 'zexp_yolo_9_hrdh/images/'
-    path_json = 'zexp_yolo_9_hrdh/json_yolo/'
+def get_graph_yolo(kr, num_arch_node, class3, type_data):
+    print(type_data)
+    if type_data == 'val': 
+        top_folder = 'yolo_hrdh_mix_672_e15_test_val/'
+    else:
+        top_folder = 'zexp_yolo_9_hrdh/'
     
-    if not os.path.exists('zexp_yolo_9_hrdh/savepred_2classi/'):
-         os.makedirs('zexp_yolo_9_hrdh/savepred_2classi')
+    path_image = top_folder + 'images/'
+    path_json = top_folder + 'json_yolo/'
+    save_path_pred = top_folder + 'savepred_2classi/'
+    
+    if not os.path.exists(save_path_pred):
+         os.makedirs(save_path_pred)
+
     array_graph = []
     arr_page =[]
     list_json = os.listdir(path_json)
@@ -246,7 +254,7 @@ def get_graph_yolo(kr, num_arch_node, class3):
         num_page = 0
         lab = []
         file_json =  path_json + d
-        path_new_im = 'zexp_yolo_9_hrdh/savebox/'
+        path_new_im = top_folder + 'savebox/'
         if not os.path.exists(path_new_im):
             os.makedirs(path_new_im)
 
@@ -298,7 +306,7 @@ if __name__ == '__main__':
         
     #'exp_yolo_9/json_yolo/ACL_P11-1008_5.json' #ACL_2020.acl-main.99_0.json'
   
-    array_graph= get_graph_yolo()
+    array_graph= get_graph_yolo('train')
    # print(array_graph)
     bg_train = dgl.batch(array_graph) # num_nodes=725391, num_edges=811734,
     #bg_train = bg_train.int().to(device)
