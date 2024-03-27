@@ -1,5 +1,7 @@
 import torch
-from plot_edge_multipage_YOLO_new import get_graph_yolo
+#from plot_edge_multipage_YOLO_new import get_graph_yolo
+from plot_edge_multipage_YOLO5 import get_graph_yolo
+
 from model import Model
 from create_graphGT import get_graph_merge, get_graphs
 import torch.nn.functional as F
@@ -55,8 +57,8 @@ def inference(graph_test, model_name, num_class):
 
 def get_images(type, exp):#TODO CAMBIARE PER YOLO e GT
     if exp == 'yolo':
-        path_json = 'zexp_yolo_9_hrdh/json_yolo/'
-        path_image= 'zexp_yolo_9_hrdh/savebox/' 
+        path_json = 'yolo_hrdh_672_5/json_yolo/'
+        path_image= 'yolo_hrdh_672_5/savebox/' 
     else:
         path_json = 'HRDS/' + type +'/'
         path_image= 'savebox_train/' #'HRDS/images/' 
@@ -206,6 +208,7 @@ def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class
    # graph, page, centroids_norm_, image_list =get_graph_merge_gt()#get_graphs('test') 
     if exp == 'yolo':
         graph, page = get_graph_yolo(kr, num_arch_node, class3, 'train')
+        
     else:
         graph, page, centroids_norm_,_= get_graphs_gt('train', kr, num_arch_node,class3) 
     dimensione_desiderata = 9
@@ -221,18 +224,21 @@ def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class
     graph_test = graph_test.int().to(device)
     
     y_true = graph_test.edata['label'] #GT
-    predictions = inference(graph_test, model_name, num_class) # num_class
+   # predictions = inference(graph_test, model_name, num_class) # num_class
+   # print(set(predictions))
     if class3:
         class_names = [0,1, 2] 
     else:
         class_names = [0,1]
-    get_cm(name, np.array(y_true), np.array(predictions),class_names)
-    draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp) 
-    #draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
+   # get_cm(name, np.array(y_true), np.array(predictions),class_names)
+    print('Draw')
+   # draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp) 
+    draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
 
 
 if __name__ == '__main__':
-    name = 'bb_lab_cent_5rel5_3class_k2_yolo_mmm'
+    name = 'bb_lab_cent_k33_3class_k2_yolo5_true'
     folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
     model_name = 'model_' + name + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
-    main(folder_save,model_name, name, 'yolo', 5, 3, 2, True) # type, kr, num_class, num_arch_node
+    main(folder_save,model_name, name, 'yolo', 3, 3, 2, True) # type, kr, num_class, num_arch_node
+       #                     kr, num_class, num_arch_node, class3

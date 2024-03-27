@@ -14,7 +14,7 @@ import networkx as nx
 import numpy as np
 from PIL import Image, ImageDraw
 
-from create_graphGT_3lab import add_edge, calculate_relative_coordinates, normalize_bounding_box, processing_lab, title_condition
+from create_graphGT_3lab import add_edge, calculate_relative_coordinates, calculate_relative_y, normalize_bounding_box, processing_lab, title_condition, weighted_labels
 
 #from torch_geometric.data import Data
 
@@ -232,10 +232,10 @@ def plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, nu
 
 def get_graph_yolo(kr, num_arch_node, class3, type_data):
     print(type_data)
-    if type_data == 'val': 
-        top_folder = 'yolo_hrdh_mix_672_e15_test_val/'
-    else:
-        top_folder = 'zexp_yolo_9_hrdh/'
+    #if type_data == 'val': 
+    #    top_folder = 'yolo_hrdh_mix_672_e15_test_val/'
+    #else:
+    top_folder = 'yolo_hrdh_672_5/' #zexp_yolo_9_hrdh/'
     
     path_image = top_folder + 'images/'
     path_json = top_folder + 'json_yolo/'
@@ -257,7 +257,7 @@ def get_graph_yolo(kr, num_arch_node, class3, type_data):
         path_new_im = top_folder + 'savebox/'
         if not os.path.exists(path_new_im):
             os.makedirs(path_new_im)
-
+        
         with open(file_json, errors="ignore") as json_file:
             data = json.load(json_file)
             # Tutte le informazioni di tutte le pagine 
@@ -268,10 +268,11 @@ def get_graph_yolo(kr, num_arch_node, class3, type_data):
             name = d.replace('.json', '')
 
             image, _ = get_name(path_image, name, page, 0)
-            save_image = False
+            save_image = True
             
             if save_image and  image != None: #name in "ACL_2021.acl-long.546" and 
                 draw = ImageDraw.Draw(image)
+                print('quiii')
                 plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
                                num_page, lab, path_new_im, bounding_boxes, page, 
                                labels_yolo, centroids, labels, i, j, name, image)
@@ -290,10 +291,11 @@ def get_graph_yolo(kr, num_arch_node, class3, type_data):
             
             relative_coordinates = calculate_relative_coordinates(n_bb, kr)
             g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
-
+            
+            #aggregated_labels = weighted_labels(n_bb, labels_yolo, kr)#calculate_relative_y(n_bb, kr)
+            #g.ndata['aggregated_labels'] = th.tensor(aggregated_labels)            
+            
             encoded_labels = processing_lab(labels_yolo)
-
-          #  print(len(encoded_labels), len(n_centroids),  len(bounding_boxes))
             g.ndata['labels'] = th.tensor(encoded_labels) 
 
             array_graph.append(g)

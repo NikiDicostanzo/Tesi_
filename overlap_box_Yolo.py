@@ -45,7 +45,9 @@ def sort_bounding_boxes(boxes, labels):
     # Ricostruisce l'ordine originale delle labels
     return sorted_box_label_pairs
 
-alab = ["sec1", "sec2","sec3","fstline","para","equ","tab","fig","meta","other"] # New 9
+#alab = ["sec1", "sec2","sec3","fstline","para","equ","tab","fig","meta","other"] # New 9
+alab = ["sec","para","fig","meta","cap"] # New 9
+
 #alab = ["title", "sec1", "sec2","sec3","fstline","equ","tab","fig","other"]
 def create_json(data, sorted_boxes, page):
     #text
@@ -67,12 +69,13 @@ def get_bbox_coords(c0, c1, h, w, width, height):
 
 # Get bb from labels of detection
 def get_bb(file_path, image):
-
-    file = open(file_path)
     bb = []
     line = []
     type = []
     confidence = []
+    
+    file = open(file_path)
+    
     width, height = image.size 
     for i in file:
         line = i.split("\n")[0].split(" ")
@@ -206,7 +209,7 @@ import natsort
 # Merge su tutte le immagini
 def merge_all_image(folder, type_img):
     # txt e img devono avere stesso nome!
-    path_images = '../dataset_yolo_hrds/test/images/'#'zexp_yolo_9_hrdh/images/' #folder + 'images/'
+    path_images = 'zexp_yolo_9_hrdh/images/' #folder + 'images/' '../dataset_yolo_hrds/test/images/'#
     path_txt = folder + 'labels/'
     images_detect = folder + 'detect/'
 
@@ -244,14 +247,19 @@ def merge_all_image(folder, type_img):
             data = []
             
         detect = images_detect + name + type_img
-        save_image =''# path_save + d   #''
+        save_image = path_save + d   #''
         
         # Se le bb si sovrappongono faccio marge
         #if d == 'ACL_P17-1140_9.png': #ACL_2020.acl-main.640_7.png
         #    print('qui')
-        new_bb, new_labels = get_bb_merge(path_image, txt, save_image, detect)
-        #Ordino in base alla loro posizione nel doc
-        sorted_boxes = sort_bounding_boxes(new_bb, new_labels)
+        if os.path.exists(txt):
+            new_bb, new_labels = get_bb_merge(path_image, txt, save_image, detect)
+            #Ordino in base alla loro posizione nel doc
+            sorted_boxes = sort_bounding_boxes(new_bb, new_labels)
+        else:
+            new_bb = []
+            new_labels = []
+            sorted_boxes = []
         data = create_json(data, sorted_boxes, page)
 
         ind = ind+1
@@ -271,5 +279,5 @@ if __name__ == '__main__':
     #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
     #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
 
-    folder = 'yolo_hrdh_mix_672_e15_test_val/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
+    folder = 'yolo_hrdh_672_5/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
     merge_all_image(folder, '.png')

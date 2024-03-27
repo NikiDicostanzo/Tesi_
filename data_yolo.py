@@ -109,13 +109,13 @@ def get_data(path_json, path_image, folder, pagine, name,num):
         pagine += data[len_data-1]["page"]
         num+=1
 
-        # if pagine < 100:
-        #      folder_dest = folder + 'val/'
-        #      print('Doc VAL:', pagine)
-        # else:
-        #      folder_dest = folder + 'train/'
-     #   print('Doc TRAIN: ', pagine)  
-        folder_dest = folder + 'test/'
+        if pagine < 100:
+             folder_dest = folder + 'val/'
+             print('Doc VAL:', pagine)
+        else:
+             folder_dest = folder + 'train/'
+        print('Doc TRAIN: ', pagine)  
+     #   folder_dest = folder + 'test/'
         create_folder(folder_dest)
         save_lab_path = folder_dest + 'labels/'
         create_folder(save_lab_path)
@@ -139,8 +139,8 @@ def get_data(path_json, path_image, folder, pagine, name,num):
 
             page = data[index]['page']
             ############################################################
-            im = path_image + '_' + str(page) + '.jpg'  # TODO per HRDS
-        #    im = path_image + str(page) + '.jpg'       # TODO per HRDH
+        #    im = path_image + '_' + str(page) + '.jpg'  # TODO per HRDS
+            im = path_image + str(page) + '.png'       # TODO per HRDH
             
             if not os.path.exists(im):
                 print('Image: ', im, 'NO EXIST')
@@ -150,8 +150,21 @@ def get_data(path_json, path_image, folder, pagine, name,num):
             width, height = image.size
             name_image  = name +'_' +str(page) + '.png'
             name_labels = name +'_'+ str(page) +'.txt'
+            
+            """ names
 
-                
+        {'author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
+        'fig', 'mail', 'secx', 'title', 
+        'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili'}
+            opara -> diventa quello precedente!
+            sec = [title, sec2, sec3, secx...]
+            para = [fstline, equ]
+            fig = [tab, tabcap, figcap, alg]
+            0: sec1
+            1: para
+            2: fig
+            3: meta 
+            """     
             #class_lab = ''
             # Classes 
             """ names:
@@ -165,40 +178,80 @@ def get_data(path_json, path_image, folder, pagine, name,num):
             7: fig
             8: meta 
             9: other
-            
             """  
             # label_idx x_center y_center width height
             #   label_idx = is_title (0, 1)
-            name_class = data[index]['class'] 
-            if name_class == 'sec1':
-                class_lab = '0'
-            elif name_class == 'sec2':
-                class_lab = '1'
-            elif name_class == 'sec3':
-                class_lab = '2'
-            elif name_class == 'fstline':
-                class_lab = '3'
-            elif name_class == 'para':
-                class_lab = '4'
-            elif name_class == 'equ':
-                class_lab = '5'
-            elif name_class == 'tab':
-                class_lab = '6'
-            elif name_class == 'fig':
-                class_lab = '7'
-            elif data[index]['is_meta'] == True:
-                class_lab = '8' 
-            else:
-                class_lab = '9'
             
+            # class_lab = set_class_nine(data, index)
+            class_lab = set_class_four(data, index)
             txt_data = create_ann(data[index]['box'], width, height)
           
             tmp = class_lab + ' ' + txt_data  
             #if class_lab== '0':
             write.append(tmp)
-
-            
         return pagine,num
+
+
+def set_class_four(data, index):
+    i = 0 #resetto
+    name_class = data[index]['class'] 
+    if name_class == 'opara':
+        i = 1
+        # assegno la classe precedente di opara 
+        while index - i> 0 and data[index-i]['class'] == 'opara':
+            i = i + 1 
+            
+    if name_class in ['sec1', 'sec2', 'sec3', 'title', 'secx'] \
+        or (i > 0 and data[index-i]['class'] in ['sec1', 'sec2', 'sec3', 'title', 'secx'] \
+            and name_class == 'opara') :
+        class_lab = '0'
+    elif name_class in ['fstline', 'para', 'equ'] \
+        or (i > 0 and data[index-i]['class'] in ['fstline', 'para', 'equ'] \
+            and name_class == 'opara'):
+        class_lab = '1'
+    elif name_class in ['tab', 'alg', 'fig'] \
+        or (i > 0 and data[index-i]['class'] in ['tab', 'alg', 'fig']\
+            and name_class == 'opara'):
+        class_lab = '2'
+    elif data[index]['is_meta'] == True \
+        or (i > 0 and data[index-i]['is_meta'] == True  \
+            and name_class == 'opara'):
+        class_lab = '3'
+    elif name_class in ['tabcap', 'figcap'] \
+        or (i > 0 and data[index-i]['class'] in ['tabcap', 'figcap']  \
+            and name_class == 'opara'):
+        class_lab = '4'
+    else:
+        class_lab='5'
+        print( data[index]['class'])
+        print('perso', name_class)
+        
+    return class_lab
+
+
+def set_class_nine(data, index, name_class):
+    name_class = data[index]['class'] 
+    if name_class == 'sec1':
+        class_lab = '0'
+    elif name_class == 'sec2':
+        class_lab = '1'
+    elif name_class == 'sec3':
+        class_lab = '2'
+    elif name_class == 'fstline':
+        class_lab = '3'
+    elif name_class == 'para':
+        class_lab = '4'
+    elif name_class == 'equ':
+        class_lab = '5'
+    elif name_class == 'tab':
+        class_lab = '6'
+    elif name_class == 'fig':
+        class_lab = '7'
+    elif data[index]['is_meta'] == True:
+        class_lab = '8' 
+    else:
+        class_lab = '9'
+    return class_lab
     
 def all_json(path_json, path_images):
     list_json = os.listdir(path_json)
@@ -211,8 +264,8 @@ def all_json(path_json, path_images):
 
             name = j.replace('.json', '')
             path_image = path_images + name +'/'
-            image = path_image + name #TODO + name per HRDS !!!!!!!!!
-            folder = "../dataset_hrdh/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+            image = path_image #+ name #TODO + name per HRDS !!!!!!!!! per HRDH togli name
+            folder = "../dataset_hrdh_5/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
             pagine,num = get_data(json, image, folder, pagine, name, num)
             
     print('TOTALE', pagine,num)#TOTALE 7788 600
@@ -229,8 +282,8 @@ if __name__ == '__main__':
     parser.add_argument("--video", dest="video", default=None, help="")
     args = parser.parse_args()
    # path_json = "dataset/train.json"
-    path_json = "HRDS/test/"
-    path_images = "HRDS/images/"
+    path_json = "HRDH/train/" #"HRDS/test/"
+    path_images = "HRDH/images/"
     print(path_json)
     all_json(path_json, path_images)
     #folder = "C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati

@@ -161,23 +161,99 @@ def normalize_bounding_box(box, image_width, image_height):
 
 
 def processing_lab(labels):
-    labels = ['other' if label in ['figcap', 'opara', 'secx','tabcap'] else label for label in labels]
+    #print(set(labels))
+    labels = ['other' if label in ['figcap', 'opara', 'secx','tabcap', 'alg'] else label for label in labels]
     labels = ['meta' if label in ['mail', 'foot', 'title','affili', 'fnote', 'author'] else label for label in labels]
 
     #le = LabelEncoder()
     #encoded_labels = le.fit_transform(labels)
     ohe = OneHotEncoder(sparse=False)
-    
+  #  print(set(labels))
     # Adatta e trasforma le etichette
     encoded_labels = ohe.fit_transform(np.array(labels).reshape(-1, 1))
     #print(encoded_labels)
     return encoded_labels
 
-def get_one_g():
-    json = 'data_h/json/ACL_2020.acl-main.99.json'
-    g, _, _, _= get_graph3(json)
-    save('prova',g)
-    return g
+def calculate_relative_y(bb, k):
+    relative_y = []
+    for i in range(len(bb)):
+        current_bb = np.array(bb[i])
+        # Estrai solo la coordinata y (secondo valore) della bounding box corrente
+        current_y = current_bb[1]
+        
+        # Calcola i k vicini precedenti
+        if i - k >= 0:
+            prev_bbs = np.array(bb[i-k:i])
+        else:
+           # prev_bbs = np.zeros([k]) # o qualsiasi valore di default
+            prev_bbs = []
+            for pb in range(k): #TODO
+                prev_bbs.append(np.zeros([4]))
+       # print(prev_bbs, '|',current_y )
+        # Calcola i k vicini successivi
+        if i + k < len(bb):
+            next_bbs = np.array(bb[i+1:i+k+1])
+        else:
+            #next_bbs = np.zeros(k) # o qualsiasi valore di default
+            next_bbs = []
+            for nb in range(k): #TODO
+                next_bbs.append(np.zeros([4]))
+        
+        # Calcola la differenza relativa tra la coordinata y della bounding box corrente e quelle dei k vicini precedenti e successivi
+        relative_diffs_prev = [abs(prev_bb[1] - current_y) for prev_bb in prev_bbs]
+        relative_diffs_next = [abs(next_bb[1] - current_y) for next_bb in next_bbs]
+        
+        # Combina le differenze relative dei vicini precedenti e successivi
+        relative_diffs = np.concatenate([relative_diffs_prev, relative_diffs_next], axis = 0)
+        
+        relative_y.append(relative_diffs)
+        #print(len(relative_diffs), (relative_diffs))
+    return relative_y
+
+def calculate_relative_labels(labels_hot, k):
+    relative_labels = []
+    for i in range(len(labels_hot)):
+        # Assuming labels are numerical for simplicity
+        current_label = np.array(labels_hot[i])
+        
+        # Calculate k nearest neighbors
+        if i - k >= 0:
+            prev_labels = np.array(labels_hot[i-k:i])
+        else:
+            prev_labels = []
+            for _ in range(k):
+                prev_labels.append(np.full_like(current_label, -1))#np.zeros_like(current_label))
+        
+        if i + k < len(labels_hot):
+            next_labels = np.array(labels_hot[i+1:i+k+1])
+        else:
+            next_labels = []
+            for _ in range(k):
+                next_labels.append(np.zeros_like(np.full_like(current_label, -1)))#current_label))
+        
+        # Combine the labels of the k nearest neighbors
+        relative_labels.append(np.concatenate([prev_labels, next_labels], axis=0))
+    
+    return relative_labels
+
+def weighted_labels(bb, labels, kr):
+    # Calcola le coordinate y
+    distances = np.array(calculate_relative_y(bb, kr)) # k vicini -< 10
+    
+    # Processa le labels
+    encoded_labels = processing_lab(labels) # classi 9
+
+    # 0 vuol dire che non ci sono k elementi prima
+    relative_labels = np.array(calculate_relative_labels(encoded_labels, kr))
+ 
+    relative_distance_reshaped = distances.reshape(-1, kr*2, 1)
+
+    # Moltiplica relative_labels e relative_distance_reshaped
+    weighted_labels = relative_labels * relative_distance_reshaped
+
+    # Somma lungo l'ultimo asse per aggregare i risultati pesati
+    aggregated_labels = np.sum(weighted_labels, axis=2)
+    return aggregated_labels
 
 def load(name):
     # load processed data from directory `self.save_path`
@@ -238,8 +314,6 @@ def get_graph_3class(json_file, kr, num_arch_node, class3):
 
        # num_page = page[len(page)-1]
 
-        # n_bb_all = [(normalize_bounding_box(box, 596*num_page, 842)) for box in bb_all ]
-        # g.ndata['bb_all'] = th.tensor(n_bb_all)
         g.ndata['bb'] = th.tensor(n_bb)
 
     #    g.ndata['dim'] = th.tensor(dim)
@@ -250,6 +324,7 @@ def get_graph_3class(json_file, kr, num_arch_node, class3):
 
         encoded_labels = processing_lab(labels)
         g.ndata['labels'] = th.tensor(encoded_labels) 
+
     return g, page, centroids, text
 
 def get_graph_merge(i, j, labels_edge, bounding_boxes, labels, page ):

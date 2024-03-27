@@ -43,14 +43,11 @@ def model_train(graph, val_graph, name_model, epoch, num_outc):
    
     out_features = num_outc
     hidden = 20
-    #model = EdgeClassifier(graph.num_edges(), 1, 0.2, node_features, 300, hidden, device, False)
+
     model = Model(input, hidden , out_features).to(device)
-  #  model = Model3(input, hidden , out_features, 1).to(device)
 
     opt = torch.optim.Adam(model.parameters())#, lr=1e-08)
-    #opt = torch.optim.SGD(model.parameters(), lr=0.1)
 
-    min_val_loss = 100000000
     for epoch in range(epoch):
         logit = model(graph, node_features)   
         #print(logit, '/n',edge_label.squeeze())
@@ -90,12 +87,14 @@ def get_nfeatures(graph):
     lab = graph.ndata['labels'].float()#.unsqueeze(1)
     coord_rel = graph.ndata['relative_coordinates'].float() 
     coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
+
+  #  aggregated_labels =  graph.ndata['aggregated_labels'].float() 
   
   #  text_emb = graph.ndata['embedding']
     
   #  Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
     #bb, lab, coord_rel_reshaped, page, centroids, text_emb
-    node_features = torch.cat([bb, lab, centroids, coord_rel_reshaped], dim=-1) #
+    node_features = torch.cat([bb, lab, centroids, coord_rel_reshaped], dim=-1) ##, , aggregated_labels]
 
     node_features = node_features.to(device)
     print('node_feature:', node_features.shape)
@@ -169,7 +168,7 @@ def main_train(model_name, epoch, kr, num_arch_node, exp, class3):
     model_train(bg_train, bg_val, model_name, epoch, 3) #TODO num_outc-> 3class == False
 
 if __name__ == '__main__':
-    main_train('model_bb_lab_cent_5rel5_3class_k2_yolo_mmm.pth', 700, 5, 2, 'yolo', True) 
+    main_train('model_bb_lab_cent_k33_3class_k2_yolo5.pth', 1000, 3, 2, 'yolo', True) 
     #kr = num_dist_rel || num_arch_node = # edge x nodo | 3class = true
 
    # model_test('model_no_page.pth')
