@@ -268,7 +268,7 @@ def get_graph():
         lab = []
       #  print(d)
         file_json =  path_json + d
-        path_new_im = 'zexp_yolo_9_hrdh/savebox/'
+        path_new_im = 'zexp_yolo_9_hrdh/savebox_test/'
         if not os.path.exists(path_new_im):
             os.makedirs(path_new_im)
 

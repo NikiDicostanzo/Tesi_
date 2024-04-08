@@ -150,6 +150,21 @@ def calculate_relative_coordinates(bb, k):
        # print(relative_diffs)#, relative_coordinates)
     return relative_coordinates
 
+def get_area(bounding_boxes):
+    areas = []
+    widths = []
+    heights = []
+    for bbox in bounding_boxes:
+        width = bbox[2] - bbox[0]
+        height = bbox[3] - bbox[1]
+        area = width * height
+        areas.append(area)
+        widths.append(width)
+        heights.append(height)
+
+    areas_array = np.array(areas)
+    return areas_array, widths, heights
+
 def normalize_bounding_box(box, image_width, image_height):
     # Normalizzazione diretta delle coordinate x e y
     normalized_x0 = box[0] / image_width
@@ -291,7 +306,7 @@ def get_graph_3class(json_file, kr, num_arch_node, class3):
     with open(json_file) as f:
         data = json.load(f)
         bounding_boxes, page,relation,parent, labels, text = get_info_json(data)
-
+    
         n_bb = [(normalize_bounding_box(box, 596, 842)) for box in bounding_boxes ]
         centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in n_bb ]
       #  dim = [((box[2] + box[0]), (box[3] - box[1])) for box in n_bb ]
@@ -316,11 +331,20 @@ def get_graph_3class(json_file, kr, num_arch_node, class3):
 
         g.ndata['bb'] = th.tensor(n_bb)
 
-    #    g.ndata['dim'] = th.tensor(dim)
       #  g.ndata['page'] = th.tensor(page)
+
+      #  aggregated_labels = weighted_labels(n_bb, labels, kr)#calculate_relative_y(n_bb, kr)
+      #  g.ndata['aggregated_labels'] = th.tensor(aggregated_labels) 
+
         # Calcola le coordinate relative per ogni nodo
         relative_coordinates = calculate_relative_coordinates(n_bb, kr)
         g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
+
+        areas_array, widths, heights = get_area(n_bb)
+
+        g.ndata['area'] = th.tensor(areas_array)
+        g.ndata['widths'] = th.tensor(widths)
+        g.ndata['heights'] = th.tensor(heights)
 
         encoded_labels = processing_lab(labels)
         g.ndata['labels'] = th.tensor(encoded_labels) 
@@ -369,7 +393,7 @@ def get_graph_merge(i, j, labels_edge, bounding_boxes, labels, page ):
    
 if __name__ == '__main__':
     #get_graphs()
-    g = get_one_g()
+    g = ''#get_one_g()
   #  g = load('prova')
   #  print(g[0])
 

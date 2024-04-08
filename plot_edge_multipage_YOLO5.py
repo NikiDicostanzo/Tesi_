@@ -63,7 +63,9 @@ def get_nodes(bounding_boxes, labels_yolo, page, num_arch_node, class3):
                     count_edge = count_edge+1 
                     blu_plot = False  
                     #break
-                elif class3==True  and blu_plot == True and (title_condition(labels_yolo, index_i, index_j-k, distances)or title_condition(labels_yolo, index_j-k, index_i, distances)): # Quello successivo
+                elif class3==True and blu_plot == True \
+                    and (title_condition(labels_yolo, index_i, index_j-k, distances)) \
+                        and ((index_i>=20 ) or (index_i<20 and 0<distances<30)): # Quello successivo
                         j_node.append(index_i)
                         i_node.append(index_j-k)
                         labels.append(2)
@@ -257,7 +259,7 @@ def get_graph_yolo(kr, num_arch_node, class3, type_data):
         num_page = 0
         lab = []
         file_json =  path_json + d
-        path_new_im = top_folder + 'savebox/'
+        path_new_im = top_folder + 'savebox_text/'
         if not os.path.exists(path_new_im):
             os.makedirs(path_new_im)
 
@@ -272,7 +274,7 @@ def get_graph_yolo(kr, num_arch_node, class3, type_data):
 
             image, _ = get_name(path_image, name, page, 0)
             #print(path_image)
-            save_image = True
+            save_image = False # Per salvare image true con inference.py
             
             if save_image and  image != None: #name in "ACL_2021.acl-long.546" and 
                 draw = ImageDraw.Draw(image)
@@ -295,8 +297,8 @@ def get_graph_yolo(kr, num_arch_node, class3, type_data):
             relative_coordinates = calculate_relative_coordinates(n_bb, kr)
             g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
             
-            #aggregated_labels = weighted_labels(n_bb, labels_yolo, kr)#calculate_relative_y(n_bb, kr)
-            #g.ndata['aggregated_labels'] = th.tensor(aggregated_labels)            
+            aggregated_labels = weighted_labels(n_bb, labels_yolo, kr)#calculate_relative_y(n_bb, kr)
+            g.ndata['aggregated_labels'] = th.tensor(aggregated_labels)            
             
             encoded_labels = processing_lab(labels_yolo)
             g.ndata['labels'] = th.tensor(encoded_labels) 

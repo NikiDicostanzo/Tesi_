@@ -70,7 +70,7 @@ def get_data(path_json, folder, pagine):
                 path_name = img_pdf[k].split('/')
                 len_name = len(path_name)
                 name = path_name[len_name-2] + '_' + path_name[len_name-1].split('.')[0]
-                name_image  = name + '.png'
+                name_image  = name + '.jpg'#'.png'
                 name_labels = name + '.txt'
 
                 write = []
@@ -108,14 +108,15 @@ def get_data(path_json, path_image, folder, pagine, name,num):
         len_data = len(data)
         pagine += data[len_data-1]["page"]
         num+=1
-
-        if pagine < 100:
-             folder_dest = folder + 'val/'
-             print('Doc VAL:', pagine)
-        else:
-             folder_dest = folder + 'train/'
+#TODO 
+        # if pagine < 100:
+        #      folder_dest = folder + 'val/'
+        #      print('Doc VAL:', pagine)
+        # else:
+        #      folder_dest = folder + 'train/'
         print('Doc TRAIN: ', pagine)  
-     #   folder_dest = folder + 'test/'
+        folder_dest = folder + 'test/' #TODO
+
         create_folder(folder_dest)
         save_lab_path = folder_dest + 'labels/'
         create_folder(save_lab_path)
@@ -139,8 +140,10 @@ def get_data(path_json, path_image, folder, pagine, name,num):
 
             page = data[index]['page']
             ############################################################
-        #    im = path_image + '_' + str(page) + '.jpg'  # TODO per HRDS
-            im = path_image + str(page) + '.png'       # TODO per HRDH
+            if name_dataset == 'HRDS':
+                im = path_image + '_' + str(page) + '.jpg'  # TODO per HRDS
+            else:
+                im = path_image + str(page) + '.png'       # TODO per HRDH
             
             if not os.path.exists(im):
                 print('Image: ', im, 'NO EXIST')
@@ -182,8 +185,8 @@ def get_data(path_json, path_image, folder, pagine, name,num):
             # label_idx x_center y_center width height
             #   label_idx = is_title (0, 1)
             
-            # class_lab = set_class_nine(data, index)
-            class_lab = set_class_four(data, index)
+            class_lab = set_class_nine(data, index)
+            #class_lab = set_class_four(data, index)
             txt_data = create_ann(data[index]['box'], width, height)
           
             tmp = class_lab + ' ' + txt_data  
@@ -223,13 +226,13 @@ def set_class_four(data, index):
         class_lab = '4'
     else:
         class_lab='5'
-        print( data[index]['class'])
-        print('perso', name_class)
+       # print( data[index]['class'])
+       # print('perso', name_class)
         
     return class_lab
 
 
-def set_class_nine(data, index, name_class):
+def set_class_nine(data, index):
     name_class = data[index]['class'] 
     if name_class == 'sec1':
         class_lab = '0'
@@ -253,19 +256,24 @@ def set_class_nine(data, index, name_class):
         class_lab = '9'
     return class_lab
     
-def all_json(path_json, path_images):
+def all_json(path_json, path_images, name_dataset):
     list_json = os.listdir(path_json)
+
     pagine = 0
     num = 0
     
     for j in list_json:
         if j != '.DS_Store':
             json = path_json + j
-
             name = j.replace('.json', '')
+           
             path_image = path_images + name +'/'
-            image = path_image #+ name #TODO + name per HRDS !!!!!!!!! per HRDH togli name
-            folder = "../dataset_hrdh_5/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+            if name_dataset == 'HRDS':
+                image = path_image + name #TODO + name per HRDS !!!!!!!!! per HRDH togli name
+            else:
+                image = path_image #TODO + name per HRDS !!!!!!!!! per HRDH togli name
+
+            folder = "../dataset_hrdh_all9/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
             pagine,num = get_data(json, image, folder, pagine, name, num)
             
     print('TOTALE', pagine,num)#TOTALE 7788 600
@@ -282,9 +290,11 @@ if __name__ == '__main__':
     parser.add_argument("--video", dest="video", default=None, help="")
     args = parser.parse_args()
    # path_json = "dataset/train.json"
-    path_json = "HRDH/train/" #"HRDS/test/"
-    path_images = "HRDH/images/"
+    name_dataset = 'HRDH'
+    path_json = name_dataset+ "/test/" #"HRDS/test/"
+    path_images = name_dataset + "/images/"
     print(path_json)
-    all_json(path_json, path_images)
+    all_json(path_json, path_images, name_dataset)
+
     #folder = "C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
     #get_data(path_json, folder)

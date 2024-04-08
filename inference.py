@@ -61,9 +61,8 @@ def get_images(type, exp):#TODO CAMBIARE PER YOLO e GT
         path_image= 'yolo_hrdh_672_5/savebox/' 
     else:
         path_json = 'HRDS/' + type +'/'
-        path_image= 'savebox_train/' #'HRDS/images/' 
+        path_image= 'savebox_test/'#'HRDS/images/' #'savebox_'+ type+ '/' #
     list_j = os.listdir(path_json)
-   
     # prendo il nome dal json 
 
     image_list = []
@@ -72,7 +71,7 @@ def get_images(type, exp):#TODO CAMBIARE PER YOLO e GT
         image_list.append(name)
     return path_image, (image_list)
 
-def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp):
+def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp, name_exp):
     i_node, j_node = graph_test.edges()
     edges = list(zip(i_node.tolist(), j_node.tolist()))
     bb_norm = graph_test.ndata['bb'].tolist()
@@ -90,9 +89,9 @@ def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predic
     
     check_folder  = True
     check_path(folder_save)
-
     count = 0 # primo doc
     num_page = 0
+
     for i in range(len(edges)):
         u, v = edges[i]
         #print(page[u], page[v])
@@ -107,7 +106,6 @@ def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predic
                 check_folder  = os.path.exists(path_image)
             else: #TODO GT
                 check_folder  = os.path.exists(path_image + image_list[count] + '/')
-
             #print(count, check_folder, path_image + image_list[count] + '/')
 
             num_page = 0 # nuovo documento
@@ -145,7 +143,7 @@ def draw_save_edge(folder_save, path_image, image_list, page, graph_test, predic
                     if k < len(edges):
                         u1, v1 = edges[k]
                 
-                plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, lab, folder_save)
+                plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, lab, folder_save,name_exp)
                 new_cent = []
                 lab = []
                 texts = []
@@ -155,25 +153,25 @@ def check_path(folder_save):
     if not os.path.exists(folder_save):
          os.makedirs(folder_save)
 
-def plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, lab, folder_save):
-    path_save_conc = folder_save + image_list[count]+ '_' + str(page[u]) +'_'+ str(page[v])+'.jpg'
+def plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, lab, folder_save, name_exp):
+    path_save_conc = folder_save + image_list[count]+ '_' + str(page[u]) +'_'+ str(page[v])+'_'+name_exp+'.jpg'
     con_img, con_draw = get_concat_h(image1, image2)
     index = 0
     for cu, cv in new_cent:
         if lab[index] == 1:
             color = 'blue'
             wid = 2
-           # con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+            con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         elif lab[index] == 2:
             color = 'cyan'
             wid = 2
-           # con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+            con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
 
         elif lab[index] == 0:
             color = 'red'
             wid = 1
    
-        con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+       # con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         index = index + 1
     con_img.save(path_save_conc)
  
@@ -202,16 +200,18 @@ def get_name(path_image, image_list, page, count, u, exp):
     #draw = D.Draw(image)
     return image, wid   
 
-def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class3):
-    path_image, image_list = get_images('train', exp) #image_list
-
+def main(folder_save, type_data, model_name, name, exp, name_exp, kr, num_class, num_arch_node, class3):
+    path_image, image_list = get_images(type_data, exp) #image_list
+    print(path_image)
    # graph, page, centroids_norm_, image_list =get_graph_merge_gt()#get_graphs('test') 
+    
     if exp == 'yolo':
-        graph, page = get_graph_yolo(kr, num_arch_node, class3, 'train')
+        graph, page = get_graph_yolo(kr, num_arch_node, class3, type_data)
         
     else:
-        graph, page, centroids_norm_,_= get_graphs_gt('train', kr, num_arch_node,class3) 
+        graph, page, centroids_norm_,_= get_graphs_gt(type_data, kr, num_arch_node,class3) 
     dimensione_desiderata = 9
+     #TODO numero classi
     
     for g in graph:
       # Assicurati che tutte le feature dei nodi abbiano la stessa dimensione e tipo di dati
@@ -224,21 +224,27 @@ def main(folder_save, model_name, name, exp, kr, num_class, num_arch_node, class
     graph_test = graph_test.int().to(device)
     
     y_true = graph_test.edata['label'] #GT
-   # predictions = inference(graph_test, model_name, num_class) # num_class
+    predictions = inference(graph_test, model_name, num_class) # num_class
    # print(set(predictions))
     if class3:
         class_names = [0,1, 2] 
     else:
         class_names = [0,1]
-   # get_cm(name, np.array(y_true), np.array(predictions),class_names)
+
+    
+    get_cm(name + name_exp, np.array(y_true), np.array(predictions),class_names)
     print('Draw')
-   # draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp) 
-    draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
+    #draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp, name_exp) 
+#    draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
 
 
 if __name__ == '__main__':
-    name = 'bb_lab_cent_k33_3class_k2_yolo5_true'
-    folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
-    model_name = 'model_' + name + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
-    main(folder_save,model_name, name, 'yolo', 3, 3, 2, True) # type, kr, num_class, num_arch_node
+    folder_save = 'exp_edge/' # Cartella dove salvo immagini 
+    name_pth = 'bb_lab_cent_kr77_area_w_h' 
+
+    #folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
+
+    name_exp = 'exp5_blue'  #TODO
+    model_name = 'model_' + name_pth + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
+    main(folder_save, 'test', model_name, '', 'gt', name_exp, 7, 3, 2, True) # type, kr, num_class, num_arch_node
        #                     kr, num_class, num_arch_node, class3

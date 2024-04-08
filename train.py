@@ -1,5 +1,7 @@
 import torch
-from plot_edge_multipage_YOLO_new import get_graph_yolo
+#from plot_edge_multipage_YOLO_new import get_graph_yolo
+from plot_edge_multipage_YOLO5 import get_graph_yolo
+
 from create_graphGT import get_one_g, get_graphs
 
 from create_graphGT_3lab import get_graphs_gt
@@ -85,16 +87,22 @@ def get_nfeatures(graph):
     centroids = graph.ndata['centroids'] 
     bb = graph.ndata['bb']      
     lab = graph.ndata['labels'].float()#.unsqueeze(1)
+    
     coord_rel = graph.ndata['relative_coordinates'].float() 
     coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
 
-  #  aggregated_labels =  graph.ndata['aggregated_labels'].float() 
-  
+   # aggregated_labels =  graph.ndata['aggregated_labels'].float() 
+
+    areas_array = graph.ndata['area'].float().unsqueeze(-1) 
+    widths = graph.ndata['widths'].float().unsqueeze(-1)
+    heights = graph.ndata['heights'].float().unsqueeze(-1) 
+    print(lab, areas_array, centroids)
   #  text_emb = graph.ndata['embedding']
     
   #  Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
     #bb, lab, coord_rel_reshaped, page, centroids, text_emb
-    node_features = torch.cat([bb, lab, centroids, coord_rel_reshaped], dim=-1) ##, , aggregated_labels]
+    node_features = torch.cat([widths, heights, bb, lab, centroids, areas_array, coord_rel_reshaped], dim=-1) ##, , aggregated_labels]
+    #node_features = torch.cat([bb, lab, centroids], dim=-1) ##, , aggregated_labels]
 
     node_features = node_features.to(device)
     print('node_feature:', node_features.shape)
@@ -149,8 +157,10 @@ def main_train(model_name, epoch, kr, num_arch_node, exp, class3):
       train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
     #  train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
     
-    dimensione_desiderata = 9
+    dimensione_desiderata = 9 # TODO numero delle classi
+    
     for graph in train_graphs:
+      #print(graph.ndata['labels'].shape[1])
       # Assicurati che tutte le feature dei nodi abbiano la stessa dimensione e tipo di dati
       if 'labels' not in graph.ndata or graph.ndata['labels'].shape[1] != dimensione_desiderata:
           # Crea una feature di placeholder con la dimensione desiderata
@@ -167,8 +177,9 @@ def main_train(model_name, epoch, kr, num_arch_node, exp, class3):
 
     model_train(bg_train, bg_val, model_name, epoch, 3) #TODO num_outc-> 3class == False
 
+# model_bb_lab_cent_kr66_3class_k2_agg_yolo5
 if __name__ == '__main__':
-    main_train('model_bb_lab_cent_k33_3class_k2_yolo5.pth', 1000, 3, 2, 'yolo', True) 
+    main_train('model_bb_lab_cent_kr77_area_w_h.pth', 1000, 7, 2, 'gt', True) 
     #kr = num_dist_rel || num_arch_node = # edge x nodo | 3class = true
 
    # model_test('model_no_page.pth')
