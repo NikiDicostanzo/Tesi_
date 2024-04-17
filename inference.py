@@ -1,6 +1,6 @@
 import torch
-#from plot_edge_multipage_YOLO_new import get_graph_yolo
-from plot_edge_multipage_YOLO5 import get_graph_yolo
+from plot_edge_multipage_YOLO_new import get_graph_yolo
+#from plot_edge_multipage_YOLO5 import get_graph_yolo
 
 from model import Model
 from create_graphGT import get_graph_merge, get_graphs
@@ -28,8 +28,8 @@ def get_centr(centr, w, h):
     y = centr[1] * h
     return x, y
 
-def inference(graph_test, model_name, num_class):
-    node_features, input, edge_label = get_nfeatures(graph_test)
+def inference(graph_test, model_name, num_class, array_features):
+    node_features, input, edge_label = get_nfeatures(graph_test, array_features)
 
     out_features = num_class
     hidden = 20
@@ -57,8 +57,8 @@ def inference(graph_test, model_name, num_class):
 
 def get_images(type, exp):#TODO CAMBIARE PER YOLO e GT
     if exp == 'yolo':
-        path_json = 'yolo_hrdh_672_5/json_yolo/'
-        path_image= 'yolo_hrdh_672_5/savebox/' 
+        path_json = 'yolo_hrdhs_672_9/json_yolo/' #bbGT_labYolo/'# 
+        path_image= 'yolo_hrdhs_672_9/savebox/' 
     else:
         path_json = 'HRDS/' + type +'/'
         path_image= 'savebox_test/'#'HRDS/images/' #'savebox_'+ type+ '/' #
@@ -161,17 +161,17 @@ def plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, la
         if lab[index] == 1:
             color = 'blue'
             wid = 2
-            con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+            #con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         elif lab[index] == 2:
             color = 'cyan'
             wid = 2
-            con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+            #con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
 
         elif lab[index] == 0:
             color = 'red'
             wid = 1
    
-       # con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+        con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         index = index + 1
     con_img.save(path_save_conc)
  
@@ -200,16 +200,16 @@ def get_name(path_image, image_list, page, count, u, exp):
     #draw = D.Draw(image)
     return image, wid   
 
-def main(folder_save, type_data, model_name, name, exp, name_exp, kr, num_class, num_arch_node, class3):
+def main(folder_save, type_data, model_name, name, exp, name_exp, kr, num_class, num_arch_node, class3, array_features):
     path_image, image_list = get_images(type_data, exp) #image_list
     print(path_image)
    # graph, page, centroids_norm_, image_list =get_graph_merge_gt()#get_graphs('test') 
     
     if exp == 'yolo':
-        graph, page = get_graph_yolo(kr, num_arch_node, class3, type_data)
+        graph, page = get_graph_yolo(kr, num_arch_node, class3, type_data, array_features)
         
     else:
-        graph, page, centroids_norm_,_= get_graphs_gt(type_data, kr, num_arch_node,class3) 
+        graph, page, centroids_norm_,_= get_graphs_gt(type_data, kr, num_arch_node,class3, array_features) 
     dimensione_desiderata = 9
      #TODO numero classi
     
@@ -224,7 +224,7 @@ def main(folder_save, type_data, model_name, name, exp, name_exp, kr, num_class,
     graph_test = graph_test.int().to(device)
     
     y_true = graph_test.edata['label'] #GT
-    predictions = inference(graph_test, model_name, num_class) # num_class
+    predictions = inference(graph_test, model_name, num_class, array_features) # num_class
    # print(set(predictions))
     if class3:
         class_names = [0,1, 2] 
@@ -234,17 +234,18 @@ def main(folder_save, type_data, model_name, name, exp, name_exp, kr, num_class,
     
     get_cm(name + name_exp, np.array(y_true), np.array(predictions),class_names)
     print('Draw')
-    #draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp, name_exp) 
-#    draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
+    draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp, name_exp) 
+    #draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp) #
 
 
 if __name__ == '__main__':
-    folder_save = 'exp_edge/' # Cartella dove salvo immagini 
-    name_pth = 'bb_lab_cent_kr77_area_w_h' 
+    folder_save = 'yolo_hrdhs_672_9/savepred/' # Cartella dove salvo immagini 
+    name_pth = 'bb_cent_area_w_h_rel5_lab_agg' 
 
     #folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
+    array_features = ['bb', 'cent', 'area', 'w', 'h', 'rel', 'lab', 'agg']
 
-    name_exp = 'exp5_blue'  #TODO
+    name_exp = ''#'exp_rel5_lab_agg'  #TODO
     model_name = 'model_' + name_pth + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
-    main(folder_save, 'test', model_name, '', 'gt', name_exp, 7, 3, 2, True) # type, kr, num_class, num_arch_node
+    main(folder_save, 'test', model_name, '', 'yolo', name_exp, 5, 3, 2, True, array_features) # type, kr, num_class, num_arch_node
        #                     kr, num_class, num_arch_node, class3

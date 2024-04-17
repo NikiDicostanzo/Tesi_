@@ -37,67 +37,6 @@ def create_ann(box, size_w, size_h):
     txt_data = str(center[0]) + ' ' + str(center[1]) + ' ' + str(w) + ' ' + str(h) 
     return txt_data 
 
-#OLD dataset
-# path_json-> train o val
-def get_data(path_json, folder, pagine):
-    
-    with open(path_json, errors="ignore") as json_file:
-        j = json.load(json_file)
-        #pagine = 0
-        
-        
-        for m in range(len(j)): #ciclo sui doc-> cioè su 'lines'
-            img_pdf = j[m]["imgs_path"]
-            lines = j[m]["lines"]
-            
-            pagine += len(lines)
-
-            # if m < 63 :
-            #     folder_dest = folder + 'val/'
-            #     print('Doc VAL: ', m, ' Pagine: ', len(lines),'tot: ', pagine)
-            # else:
-            #     folder_dest = folder + 'train/'
-            #     print('Doc TRAIN: ', m, ' Pagine: ', len(lines),'tot: ', pagine)
-            folder_dest = folder + 'test/'
-
-            for k in range(len(lines)): # 1 pdf con + immagini
-                 
-            # print((j[0]['imgs_path'][k])) # immagini che devo rinominare e spostare in Dataset/images/
-                
-                image = Image.open(img_pdf[k])
-                width, height = image.size
-
-                path_name = img_pdf[k].split('/')
-                len_name = len(path_name)
-                name = path_name[len_name-2] + '_' + path_name[len_name-1].split('.')[0]
-                name_image  = name + '.jpg'#'.png'
-                name_labels = name + '.txt'
-
-                write = []
-                is_title = '2'
-                
-                for l in lines[k]: # 1 immagine (righe) -> tuti nello stesso txt        
-                    # label_idx x_center y_center width height
-                    #   label_idx = is_title (0, 1)
-                    if l['is_title'] == True:
-                        is_title = '0'
-                    else:
-                        is_title = '1'
-
-                    norm_box = get_norm_box(width, l, height)
-                    txt_data = create_ann(norm_box, width, height)
-
-                    tmp = is_title + ' ' + txt_data  
-                    write.append(tmp)
-
-                save_lab = folder_dest + 'labels/' + name_labels
-                with open(save_lab, 'w') as f:
-                    for i in write:
-                        f.write(i)
-                        f.write('\n')
-                save_im = folder_dest + 'images/' + name_image
-                image.save(save_im)
-
 #NEW dataset
 # path_json-> train o val
 def get_data(path_json, path_image, folder, pagine, name,num):
@@ -154,6 +93,16 @@ def get_data(path_json, path_image, folder, pagine, name,num):
             name_image  = name +'_' +str(page) + '.png'
             name_labels = name +'_'+ str(page) +'.txt'
             
+            if index == len(data)-1:
+                print('QUI')
+                save_lab = save_lab_path + name_labels
+                with open(save_lab, 'w') as f:
+                    for i in write:
+                        f.write(i)
+                        f.write('\n')
+                
+                save_im = save_im_path + name_image
+                image.save(save_im) 
             """ names
 
         {'author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
@@ -273,7 +222,7 @@ def all_json(path_json, path_images, name_dataset):
             else:
                 image = path_image #TODO + name per HRDS !!!!!!!!! per HRDH togli name
 
-            folder = "../dataset_hrdh_all9/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+            folder = "../dataset_hrdhs_all9/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
             pagine,num = get_data(json, image, folder, pagine, name, num)
             
     print('TOTALE', pagine,num)#TOTALE 7788 600
@@ -290,7 +239,7 @@ if __name__ == '__main__':
     parser.add_argument("--video", dest="video", default=None, help="")
     args = parser.parse_args()
    # path_json = "dataset/train.json"
-    name_dataset = 'HRDH'
+    name_dataset = 'HRDS'
     path_json = name_dataset+ "/test/" #"HRDS/test/"
     path_images = name_dataset + "/images/"
     print(path_json)

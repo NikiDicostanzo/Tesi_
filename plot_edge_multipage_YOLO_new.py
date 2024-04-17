@@ -14,7 +14,7 @@ import networkx as nx
 import numpy as np
 from PIL import Image, ImageDraw
 
-from create_graphGT_3lab import add_edge, calculate_relative_coordinates, calculate_relative_y, normalize_bounding_box, processing_lab, title_condition, weighted_labels
+from create_graphGT_3lab import add_edge, calculate_relative_coordinates, calculate_relative_y, get_area, normalize_bounding_box, processing_lab, title_condition, weighted_labels
 
 #from torch_geometric.data import Data
 
@@ -223,6 +223,8 @@ def plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, nu
             save_im = path_new_im + name + '_' + str(page[b-1]) + '.png'
             image.save(save_im)
             image, _ = get_name(path_image, name, page, b)
+            if image == None:
+                break
             draw = ImageDraw.Draw(image)
         
         draw.rectangle(bounding_boxes[b], outline = color) 
@@ -230,16 +232,16 @@ def plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, nu
             save_im = path_new_im + name + '_' + str(page[b]) + '.png'
             image.save(save_im)
 
-def get_graph_yolo(kr, num_arch_node, class3, type_data):
+def get_graph_yolo(kr, num_arch_node, class3, type_data, array_features):
     print(type_data)
     #if type_data == 'val': 
     #    top_folder = 'yolo_hrdh_mix_672_e15_test_val/'
     #else:
-    top_folder = 'yolo_hrdh_672_5/' #zexp_yolo_9_hrdh/'
+    top_folder = 'yolo_hrdhs_672_9/' #zexp_yolo_9_hrdh/'
     
     path_image = top_folder + 'images/'
-    path_json = top_folder + 'json_yolo/'
-    save_path_pred = top_folder + 'savepred_2classi/'
+    path_json = top_folder + 'json_yolo/' #bbGT_labYolo/'#'
+    save_path_pred = top_folder + 'savepred_yolo/'
     
     if not os.path.exists(save_path_pred):
          os.makedirs(save_path_pred)
@@ -268,11 +270,10 @@ def get_graph_yolo(kr, num_arch_node, class3, type_data):
             name = d.replace('.json', '')
 
             image, _ = get_name(path_image, name, page, 0)
-            save_image = True
+            save_image = False
             
             if save_image and  image != None: #name in "ACL_2021.acl-long.546" and 
                 draw = ImageDraw.Draw(image)
-                print('quiii')
                 plot_box_yolo(draw, get_color, get_name, plot_edge, path_image, new_cent, 
                                num_page, lab, path_new_im, bounding_boxes, page, 
                                labels_yolo, centroids, labels, i, j, name, image)
@@ -287,16 +288,37 @@ def get_graph_yolo(kr, num_arch_node, class3, type_data):
 
             #Node Features
             g.ndata['centroids'] = th.tensor(n_centroids)
-            g.ndata['bb'] = th.tensor(n_bb)
+            g.ndata['bb'] = th.tensor(n_bb)           
             
-            relative_coordinates = calculate_relative_coordinates(n_bb, kr)
-            g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
-            
-            #aggregated_labels = weighted_labels(n_bb, labels_yolo, kr)#calculate_relative_y(n_bb, kr)
-            #g.ndata['aggregated_labels'] = th.tensor(aggregated_labels)            
-            
-            encoded_labels = processing_lab(labels_yolo)
-            g.ndata['labels'] = th.tensor(encoded_labels) 
+            #  g.ndata['page'] = th.tensor(page)
+            if 'agg' in array_features:
+                aggregated_labels = weighted_labels(n_bb, labels_yolo, kr)#calculate_relative_y(n_bb, kr)
+                g.ndata['aggregated_labels'] = th.tensor(aggregated_labels) 
+                print('Aggr.')
+                
+            if 'rel' in array_features:
+            # Calcola le coordinate relative per ogni nodo
+                relative_coordinates = calculate_relative_coordinates(n_bb, kr)
+                g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
+                print('Rel')
+
+            areas_array, widths, heights = get_area(n_bb)
+            if 'area' in array_features:
+                g.ndata['area'] = th.tensor(areas_array)
+                print('Area')
+
+            if 'w' in array_features:
+                g.ndata['widths'] = th.tensor(widths)
+                print('Width')
+
+            if 'h' in array_features:
+                g.ndata['heights'] = th.tensor(heights)
+                print('Heights')
+
+            if 'lab' in array_features:
+                encoded_labels = processing_lab(labels_yolo)
+                g.ndata['labels'] = th.tensor(encoded_labels) 
+                print('Labels')
 
             array_graph.append(g)
             arr_page.append(page)

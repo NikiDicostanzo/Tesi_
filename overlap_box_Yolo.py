@@ -239,7 +239,7 @@ def merge_all_image(folder, type_img):
         # se non appartengono allo stesso doc salvo precedenti nello stesso json
         cn = get_name(sorted_dir_list[ind-1]).split('_')
         check_name = '_'.join(cn[:len(cn)-1])
-       # print(d)
+        print(d)
         if ind > 0 and (check_name != n): # _0  o _10 
             
         #    print(check_name, '|', n)

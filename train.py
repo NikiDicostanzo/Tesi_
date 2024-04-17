@@ -30,10 +30,10 @@ from model3 import Model3
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def model_train(graph, val_graph, name_model, epoch, num_outc):
+def model_train(graph, val_graph, name_model, epoch, num_outc, array_features):
     print(graph)
 
-    node_features, input, edge_label = get_nfeatures(graph)
+    node_features, input, edge_label = get_nfeatures(graph, array_features)
     print(type(edge_label))
     #node_features_val, _, edge_label_val = get_nfeatures(val_graph)
 
@@ -81,34 +81,7 @@ def model_train(graph, val_graph, name_model, epoch, num_outc):
     # Salva il modello addestrato
     torch.save(model.state_dict(), name_model)
 
-def get_nfeatures(graph):
 
-  #  page = graph.ndata['page'].float().unsqueeze(-1)
-    centroids = graph.ndata['centroids'] 
-    bb = graph.ndata['bb']      
-    lab = graph.ndata['labels'].float()#.unsqueeze(1)
-    
-    coord_rel = graph.ndata['relative_coordinates'].float() 
-    coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
-
-   # aggregated_labels =  graph.ndata['aggregated_labels'].float() 
-
-    areas_array = graph.ndata['area'].float().unsqueeze(-1) 
-    widths = graph.ndata['widths'].float().unsqueeze(-1)
-    heights = graph.ndata['heights'].float().unsqueeze(-1) 
-    print(lab, areas_array, centroids)
-  #  text_emb = graph.ndata['embedding']
-    
-  #  Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
-    #bb, lab, coord_rel_reshaped, page, centroids, text_emb
-    node_features = torch.cat([widths, heights, bb, lab, centroids, areas_array, coord_rel_reshaped], dim=-1) ##, , aggregated_labels]
-    #node_features = torch.cat([bb, lab, centroids], dim=-1) ##, , aggregated_labels]
-
-    node_features = node_features.to(device)
-    print('node_feature:', node_features.shape)
-    input = node_features.shape[1]
-    edge_label = graph.edata['label'].unsqueeze(-1)
-    return node_features,input,edge_label
 
 def accuracy(indices, labels):
     if labels.dim() >  1:
@@ -117,14 +90,24 @@ def accuracy(indices, labels):
     correct = torch.sum(indices == labels)
     return correct.item() *1.0/ len(labels)
 
-def model_test(model_name):
-    graph_test, _ , _ ,_ = get_graphs3('test')
+def model_test(model_name, kr, num_arch_node, class3, array_features):
+    graph_test, _, _ , _ = get_graphs_gt('test', kr, num_arch_node, class3, array_features)#get_graphs3('test')
     #graph_test = get_graph()
+
+    dimensione_desiderata = 9 # TODO numero delle classi
+
+    for graph in graph_test:
+      #print(graph.ndata['labels'].shape[1])
+      # Assicurati che tutte le feature dei nodi abbiano la stessa dimensione e tipo di dati
+      if 'labels' not in graph.ndata or graph.ndata['labels'].shape[1] != dimensione_desiderata:
+          # Crea una feature di placeholder con la dimensione desiderata
+          placeholder = torch.zeros((graph.number_of_nodes(), dimensione_desiderata), dtype=torch.float64)
+          graph.ndata['labels'] = placeholder
     
     graph_test = dgl.batch(graph_test) # num_nodes=725391, num_edges=811734,
     graph_test = graph_test.int().to(device)
 
-    node_features, input, edge_label = get_nfeatures(graph_test)
+    node_features, input, edge_label = get_nfeatures(graph_test, array_features)
 
     out_features = 3 
     hidden = 20
@@ -147,14 +130,14 @@ def model_test(model_name):
 
     print('Test Accuracy: {:.4f}'.format(acc)) # Test Accuracy: 0.9009
     
-def main_train(model_name, epoch, kr, num_arch_node, exp, class3):
+def main_train(model_name, epoch, kr, num_arch_node, exp, class3, array_features):
     #bg_train = get_one_g()#get_graphs()
   #  train_graphs, _, _ , _= get_graph_merge_gt()
     if exp == 'yolo':
-      train_graphs, _ = get_graph_yolo(kr, num_arch_node, class3, 'train')
+      train_graphs, _ = get_graph_yolo(kr, num_arch_node, class3, 'train', array_features)
       #val_graphs, _ = get_graph_yolo(kr, num_arch_node, class3, 'val')
     else:
-      train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
+      train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3, array_features)
     #  train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
     
     dimensione_desiderata = 9 # TODO numero delle classi
@@ -175,15 +158,68 @@ def main_train(model_name, epoch, kr, num_arch_node, exp, class3):
     #bg_val = bg_val.int().to(device)
     print(bg_train, '\n', bg_val)
 
-    model_train(bg_train, bg_val, model_name, epoch, 3) #TODO num_outc-> 3class == False
+    model_train(bg_train, bg_val, model_name, epoch, 3, array_features) #TODO num_outc-> 3class == False
 
 # model_bb_lab_cent_kr66_3class_k2_agg_yolo5
-if __name__ == '__main__':
-    main_train('model_bb_lab_cent_kr77_area_w_h.pth', 1000, 7, 2, 'gt', True) 
-    #kr = num_dist_rel || num_arch_node = # edge x nodo | 3class = true
 
-   # model_test('model_no_page.pth')
+def get_nfeatures(graph, array_features):
+
+  #  page = graph.ndata['page'].float().unsqueeze(-1)
+    data_features = []
+    centroids = graph.ndata['centroids'] 
+    data_features.append(centroids)
+
+    bb = graph.ndata['bb']      
+    data_features.append(bb)
+
+    if 'lab' in array_features:
+      lab = graph.ndata['labels'].float()#.unsqueeze(1)
+      data_features.append(lab)
+
+    if 'rel' in array_features:
+      coord_rel = graph.ndata['relative_coordinates'].float() 
+      coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
+      data_features.append(coord_rel_reshaped)
+
+    if 'agg' in array_features:
+      aggregated_labels =  graph.ndata['aggregated_labels'].float() 
+      data_features.append(aggregated_labels)
+      
+    if 'area' in array_features:
+      areas_array = graph.ndata['area'].float().unsqueeze(-1) 
+      data_features.append(areas_array)
+
+    if 'w' in array_features:  
+      widths = graph.ndata['widths'].float().unsqueeze(-1)
+      data_features.append(widths)
+
+    if 'h' in array_features:
+      heights = graph.ndata['heights'].float().unsqueeze(-1) 
+      data_features.append(heights)
+
+  #  text_emb = graph.ndata['embedding']
     
+  #  Concatena 'pages',centroid, 'bbs' lungo la dimensione delle caratteristiche
+    #bb, lab, coord_rel_reshaped, page, centroids, text_emb
+    node_features = torch.cat(data_features, dim=-1) ##, , aggregated_labels]
+
+    #node_features = torch.cat([widths, heights, bb, centroids, areas_array], dim=-1) ##, , aggregated_labels]
+    #node_features = torch.cat([bb, lab, centroids], dim=-1) ##, , aggregated_labels]
+
+    node_features = node_features.to(device)
+    print('node_feature:', node_features.shape)
+    input = node_features.shape[1]
+    edge_label = graph.edata['label'].unsqueeze(-1)
+    return node_features,input,edge_label
+
+if __name__ == '__main__':
+    #'bb', 'cent', 'lab', 'area', 'w', 'h', 'rel', 'agg'
+    array_features = ['bb', 'cent', 'area', 'w', 'h', 'rel', 'lab', 'agg']
+   # main_train('model_bb_cent_area_w_h_rel10_lab_agg.pth', 1000, 10, 2, 'gt', True, array_features) 
+  #  #kr = num_dist_rel || num_arch_node = # edge x nodo | 3class = true
+
+    model_test('model_bb_cent_area_w_h_rel10_lab_agg.pth', 10, 2, True, array_features)
+    #kr, num_arch_node, class3,
 
 # k2 -> [699346 586447 106252]
 """ 

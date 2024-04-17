@@ -282,7 +282,7 @@ def save(name,graphs):
    # print(graph_path)
     save_graphs(graph_path, graphs)
 
-def get_graphs_gt(type, kr, num_arch_node, class3):
+def get_graphs_gt(type, kr, num_arch_node, class3, array_features):
     path_json = 'HRDS/' + type +'/'
     list_j = os.listdir(path_json)
     all_graph = []
@@ -293,7 +293,7 @@ def get_graphs_gt(type, kr, num_arch_node, class3):
     for j in list_j:
         #print(c)
         json = path_json + j
-        g, page, centroid, text = get_graph_3class(json, kr, num_arch_node, class3)
+        g, page, centroid, text = get_graph_3class(json, kr, num_arch_node, class3, array_features)
         all_graph.append(g)
         pages.append(page)
         centr.append(centroid)
@@ -302,7 +302,7 @@ def get_graphs_gt(type, kr, num_arch_node, class3):
     return all_graph, np.concatenate(pages, axis=0), np.concatenate(centr, axis=0), np.concatenate(texts, axis=0)
    
 
-def get_graph_3class(json_file, kr, num_arch_node, class3):
+def get_graph_3class(json_file, kr, num_arch_node, class3, array_features):
     with open(json_file) as f:
         data = json.load(f)
         bounding_boxes, page,relation,parent, labels, text = get_info_json(data)
@@ -320,76 +320,40 @@ def get_graph_3class(json_file, kr, num_arch_node, class3):
 
         #Node Features
         g.ndata['centroids'] = th.tensor(centroids)
-
-        # node_embeddings = []
-        # for i, t in enumerate(text):
-        #     embedding = generate_embedding(t)
-        #     node_embeddings.append(embedding)
-        # g.ndata['embedding'] = th.stack(node_embeddings)
-
+        g.ndata['bb'] = th.tensor(n_bb)
        # num_page = page[len(page)-1]
 
-        g.ndata['bb'] = th.tensor(n_bb)
-
       #  g.ndata['page'] = th.tensor(page)
-
-      #  aggregated_labels = weighted_labels(n_bb, labels, kr)#calculate_relative_y(n_bb, kr)
-      #  g.ndata['aggregated_labels'] = th.tensor(aggregated_labels) 
-
+        if 'agg' in array_features:
+            aggregated_labels = weighted_labels(n_bb, labels, kr)#calculate_relative_y(n_bb, kr)
+            g.ndata['aggregated_labels'] = th.tensor(aggregated_labels) 
+            print('Aggr.')
+            
+        if 'rel' in array_features:
         # Calcola le coordinate relative per ogni nodo
-        relative_coordinates = calculate_relative_coordinates(n_bb, kr)
-        g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
+          relative_coordinates = calculate_relative_coordinates(n_bb, kr)
+          g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
+          print('Rel')
 
         areas_array, widths, heights = get_area(n_bb)
+        if 'area' in array_features:
+            g.ndata['area'] = th.tensor(areas_array)
+            print('Area')
 
-        g.ndata['area'] = th.tensor(areas_array)
-        g.ndata['widths'] = th.tensor(widths)
-        g.ndata['heights'] = th.tensor(heights)
+        if 'w' in array_features:
+            g.ndata['widths'] = th.tensor(widths)
+            print('Width')
 
-        encoded_labels = processing_lab(labels)
-        g.ndata['labels'] = th.tensor(encoded_labels) 
+        if 'h' in array_features:
+            g.ndata['heights'] = th.tensor(heights)
+            print('Heights')
+
+        if 'lab' in array_features:
+            encoded_labels = processing_lab(labels)
+            g.ndata['labels'] = th.tensor(encoded_labels) 
+            print('Labels')
 
     return g, page, centroids, text
-
-def get_graph_merge(i, j, labels_edge, bounding_boxes, labels, page ):
-   
-   # i, j, labels_edge, bounding_boxes, labels, page = get_graph()
-   # 
-    n_bb = [(normalize_bounding_box(box, 596, 842)) for box in bounding_boxes ]
-    centroids = [((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) for box in n_bb ]
-    
-    # Graph
-    g = dgl.graph((i, j))
-    g.edata['label'] = th.tensor(labels_edge)
-
-    #Node Features
-    g.ndata['centroids'] = th.tensor(centroids)
-
-    # num_page = page[len(page)-1]
-
-    # n_bb_all = [(normalize_bounding_box(box, 596*num_page, 842)) for box in bb_all ]
-    # g.ndata['bb_all'] = th.tensor(n_bb_all)
-    g.ndata['bb'] = th.tensor(n_bb)
-
-#    g.ndata['dim'] = th.tensor(dim)
-#    g.ndata['page'] = th.tensor(page)
-    #print(g.nodes())
-    # Calcola le coordinate relative per ogni nodo
-    relative_coordinates = calculate_relative_coordinates(n_bb)
-    g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
-
-    encoded_labels = processing_lab(labels)
-    g.ndata['labels'] = th.tensor(encoded_labels) 
-
-    # node_embeddings = []
-    # for i, t in enumerate(text):
-    #     embedding = generate_embedding(t)
-    #     node_embeddings.append(embedding)
-    # g.ndata['embedding'] = th.stack(node_embeddings)
-    #   print( g.ndata['embedding'].shape)
-  
-    return g, page, centroids
-
    
 if __name__ == '__main__':
     #get_graphs()
