@@ -93,7 +93,7 @@ wheels/
 .installed.cfg
 *.egg
 
-*~/.
+*/.
 Pesi_Marzo/
 Pesi_febb/
 citeseer.zip
