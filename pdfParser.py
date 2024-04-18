@@ -8,7 +8,7 @@ import json
 
 def combine_bb(bb, f_style, f_size, font, text, data, k): 
     #stessa y0 e vicini x(0)2 == x(1)0  (?) 
-    x0, y0, x1, y1 = bb[0]
+    #x0, y0, x1, y1 = bb[0]
     comb = False
     new_bb = []
     
@@ -44,10 +44,12 @@ def combine_bb(bb, f_style, f_size, font, text, data, k):
             if comb:
                 new_bb.append([x0, y0, x1, y1])
                 #f_style, f_size, font, text
-                dict_data = {'box' : [x0, y0, x1, y1], 'style': f_style[i], 'size': f_size[i], 'font': font[i], 'text': new_text, 'page': k}
+                dict_data = get_dict([x0, y0, x1, y1], f_style[i], f_size[i], font[i], k, new_text, 'text')
+                #{'box' : [x0, y0, x1, y1], 'style': f_style[i], 'size': f_size[i], 'font': font[i], 'text': new_text, 'page': k, 'type': 'text'}
                 comb = False
             else:
-                dict_data = {'box' : bb[i], 'style': f_style[i], 'size': f_size[i], 'font': font[i], 'text': text[i], 'page': k}
+                dict_data = get_dict(bb[i], f_style[i], f_size[i], font[i], k, text[i], 'text')
+                #{'box' : bb[i], 'style': f_style[i], 'size': f_size[i], 'font': font[i], 'text': text[i], 'page': k, 'type': 'text'}
                 new_bb.append(bb[i])
             data.append(dict_data)
             new_text = ''    
@@ -57,7 +59,7 @@ def combine_bb(bb, f_style, f_size, font, text, data, k):
 def parse_pymupdf(path, name, save):
     doc = fitz.open(path)
     data = [] # metto tutte le pagine nello stesso json
-    
+    #new_data = []
     # TODO itero su Pagine ..
     for k in range(len(doc)):
         page = doc[k]#[0] # Access the first page (0-based index)
@@ -69,7 +71,18 @@ def parse_pymupdf(path, name, save):
         f_style = []
         font = []
         text = []
-        image_bboxes = []
+       # find_images_bbox(doc, page, k)
+      #f{lines,lines_strict,text,explicit}
+        tables = page.find_tables(horizontal_strategy="lines")
+        table_data = []
+        for t in tables:
+            #print(t.extract())
+            dict_tab = get_dict(t.bbox, False, False, False, k, t.extract(), 'tab')
+            #{'box': t.bbox, 'style': False, 'size': False, 'font': False, 'page': k, 'text': t.extract(), 'type': 'tab'}
+           # print(dict_im)
+            table_data.append(dict_tab)
+
+        
         
         d = page.get_text("dict")
         blocks = d["blocks"]  # the list of block dictionaries
@@ -78,10 +91,14 @@ def parse_pymupdf(path, name, save):
         #image_bboxes.append(imgblocks[0]['bbox'])
         image_data = []
         for im in imgblocks:
-            dict_im = {'box': im['bbox'], 'height': im['height'], 'width': im['width']}
-            print(dict_im)
+       #     dict_im = {'box': im['bbox'], 'style': False, 'size': False, 'font': False, 'page': k, 'text': False, 'type': 'img'}
+            dict_im = get_dict(im['bbox'], False, False, False, k, False, 'img')
+           # print(dict_im)
             image_data.append(dict_im)
-
+            print(dict_im)
+        
+        
+        tmp = []
         for block in all_infos['blocks']:
             if 'lines' in block:
                 for line in block['lines']:
@@ -98,14 +115,58 @@ def parse_pymupdf(path, name, save):
                         font.append(span['font'])
                         text.append(span['text'])
                     # print(f"Font: {span['font']}, Size: {span['size']}, Bounding Box: {span['bbox']}, Text: {span['text']}, Style: {style}")
-        data = combine_bb(bb, f_style, f_size, font, text, data, k)
-
-        
+        tmp = combine_bb(bb, f_style, f_size, font, text,  tmp, k)
+        tmp = get_caption(tmp, image_data, table_data)
+        data = data + tmp
+       # data = data + image_data # Metto immagini in fondo alla pagina ! ! 
+        #print(data)
     save_json = save +'json/' + name +'.json' 
     with open(save_json, 'w') as f:
         json.dump(data, f, indent=4)
 
-    return data #bb, f_style, f_size, font, text, image_bboxes, image_data
+    #return new_data #bb, f_style, f_size, font, text, image_bboxes, image_data
+
+def find_images_bbox(doc, page, k):
+    
+    image_list = doc.get_page_images(k, full=True)
+    for i in range(len(image_list)):
+        image_bbox = page.get_image_bbox(image_list[i])
+        print('image {} Bbox: {}'.format(i, image_bbox))
+    
+
+def get_caption(data, image_data, table_data):
+    cap_im_tab = []
+    new_data = []
+    count_im = 0
+    count_tab = 0
+    for i in data: # in questo modo dopo immagine o tabella ho la caption associata
+        #print(i)
+        # Y1 dell'imm simile a Y0 del tab && X0 simile a X0
+        
+        if 'Figure' in i['text'] and i['size']<10.2 and \
+            count_im < len(image_data) and \
+                image_data[count_im]['box'][3]- 20 <  i['box'][1] < image_data[count_im]['box'][3]+ 20:
+             #       and image_data[count_im]['box'][0]-10 <  i['box'][0] < image_data[count_im]['box'][0]+10: 
+                cap_im_tab.append(image_data[count_im])
+                cap_im_tab.append(i)
+                
+                print('|Fig -> ', i['text'] , ':', i['box'], '|', image_data[count_im]['box'])
+                count_im = count_im + 1
+        elif count_tab < len(table_data) and 'Table' in i['text'] and i['size']<10.2 and i['page'] == table_data[count_tab]['page'] :#and \
+               # count_tab < len(table_data) and \
+               # table_data[count_tab]['box'][3]-50 <  i['box'][1] < table_data[count_tab]['box'][3]+50:
+                cap_im_tab.append(table_data[count_tab])
+                cap_im_tab.append(i)
+              #  print('|Tab -> ', i['text'],  table_data[count_tab]['text'])
+                count_tab = count_tab + 1
+        else:
+            new_data.append(i) # Tolgo da dentro i caption di fig e tab
+   # print(len(image_data))
+    new_data = new_data + cap_im_tab
+    return new_data
+
+def get_dict(box, style, size, font, page, text, type):
+    return {'box': box, 'style': style, 'size': size, 'font': font, 'page': page, 'text': text, 'type': type}
 
 def get_style(flags):
     if  bool(flags & 2**4):
@@ -166,39 +227,41 @@ def dimension_pdf(pdf_path):
         page = reader.pages[0]
         
         # Ottieni le dimensioni della pagina
-        print(page.mediabox)
+      #  print(page.mediabox)
         width = page.mediabox[2]
         height = page.mediabox[3]
         
         # Stampa le dimensioni
-        print(f"Width = {width}, Height = {height}")
+      #  print(f"Width = {width}, Height = {height}")
     return width, height
 
 if __name__ == '__main__':
     # Example usage
     # Directory to save the PDFs
-    dir = 'acl_anthology_pdfs/'
-    save_path = 'dataset_parse/'
-   # list_doc = os.listdir(save_dir) # Ciclare su PDF TODO
+        dir = 'acl_anthology_pdfs/'
+        save_path = 'dataset_parse/'
+    
+        list_doc = os.listdir(dir) # Ciclare su PDF TODO
    # pdf = list_doc[2]
-    pdf ='2022.naacl-demo.0.pdf'
+    #pdf ='2022.naacl-demo.0.pdf'
+    #for pdf in list_doc:
+        pdf = '2022.naacl-main.92.pdf'
+        print(pdf)
+        pdf_path = dir + pdf
 
-    print(pdf)
-    pdf_path = dir + pdf
-
-    name = pdf.replace('.pdf', '')
-    
-    # Get image from PDF
-    get_image(pdf_path, save_path, name)
-    parse_pymupdf(pdf_path, name, save_path)
-    #bb, f_style, f_size, font, text, image_bboxes = parse_pymupdf(pdf_path)
-    #draw_bb(pdf,bb, image_bboxes)
-    #data = combine_bb(bb, f_style, f_size, font, text)
-    
-    # save_json = 'json_parse/' + 'prova.json' 
-    # with open(save_json, 'w') as f:
-    #     json.dump(data, f, indent=4)
-    #draw_bb(pdf, new_bb)
+        name = pdf.replace('.pdf', '')
+        
+        # Get image from PDF
+        get_image(pdf_path, save_path, name)
+        parse_pymupdf(pdf_path, name, save_path)
+        #bb, f_style, f_size, font, text, image_bboxes = parse_pymupdf(pdf_path)
+        #draw_bb(pdf,bb, image_bboxes)
+        #data = combine_bb(bb, f_style, f_size, font, text)
+        
+        # save_json = 'json_parse/' + 'prova.json' 
+        # with open(save_json, 'w') as f:
+        #     json.dump(data, f, indent=4)
+        #draw_bb(pdf, new_bb)
 
 
 # Estrarre immagini -> folder / image / image0.png
