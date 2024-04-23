@@ -51,8 +51,8 @@ def combine_bb(bb, f_style, f_size, font, text, data, k):
     for i in range(len(bb)):
 
         if i < len(bb)-1 and (bb[i+1][1]) - 4 <=(bb[i][1]) <= (bb[i+1][1]) + 4 \
-            and (((bb[i+1][0]) - 15 <= (bb[i][2]) <= (bb[i+1][0]) + 15) \
-                 or ((bb[i+1][0]) - 15 <= (bb[i][0]) <= (bb[i+1][0]) + 15)):
+            and (((bb[i+1][0]) - 10 <= (bb[i][2]) <= (bb[i+1][0]) + 10) \
+                 or ((bb[i+1][0]) - 10 <= (bb[i][0]) <= (bb[i+1][0]) + 10)):
             if comb: # ha fatto gia dei merge
                 x0 = min(x0, bb[i+1][0])
                 y0 = min(y0, bb[i+1][1])
@@ -91,7 +91,7 @@ def parse_pymupdf(path, name, save):
     data = [] # metto tutte le pagine nello stesso json
 
     for k in range(len(doc)):
-        page = doc[k]#[0] # Access the first page (0-based index)
+        page = doc[k] # Access page
         all_infos = page.get_text("dict", sort=True)#, flags=11)
     
         bb = []
@@ -100,9 +100,8 @@ def parse_pymupdf(path, name, save):
         font = []
         text = []           
 
-        
         #{lines,lines_strict,text,explicit}horizontal_strategy="lines_strict",
-        tables = page.find_tables(intersection_tolerance=40)#, join_tolerance =1)#, snap_x_tolerance= 15)#horizontal_strategy='text', vertical_strategy='text')
+        tables = page.find_tables(intersection_tolerance=45)#, join_tolerance =1)#, snap_x_tolerance= 15)#horizontal_strategy='text', vertical_strategy='text')
         table_data = []
         for t in tables:
             dict_tab = get_dict(t.bbox, False, False, False, k, t.extract(), 'tab')
@@ -115,32 +114,9 @@ def parse_pymupdf(path, name, save):
         for im in imgblocks: # TODO MERGE
             #box_im = 
             dict_im = get_dict(im['bbox'], False, False, False, k, False, 'img')
-         #   image_data.append(dict_im)
+            image_data.append(dict_im)
             #print(dict_im)
-        
-        images = page.get_images(full=True)
-        for img in images:
-            # img[0] è il dizionario con le informazioni sull'immagine
-            # img[1] è il buffer dell'immagine
-            xref = img[0]
-            base = img[1]
-            # Estrai il bounding box dell'immagine
-            bbox = xref["rect"]
-            dict_im = get_dict(bbox, False, False, False, k, False, 'img')
-            image_data.append(dict_im)
-        paths = page.get_drawings()
-        for path in paths:
-            # print(path)
-            rect = path["rect"]
-            bbox = [rect.x0, rect.y0, rect.x1, rect.y1]
-            if rect.y0 == rect.y1:
-                dict_im = get_dict(bbox, False, False, False, k, False, 'linee')
-            else:
-                dict_im = get_dict(bbox, False, False, False, k, False, 'draw')
-            image_data.append(dict_im)
-            print(f"k:: {k}, Bounding box: {bbox}")
-
-
+       
         tmp = []
         for block in all_infos['blocks']:
             if 'lines' in block:
@@ -158,7 +134,7 @@ def parse_pymupdf(path, name, save):
 
         tmp = combine_bb(bb, f_style, f_size, font, text,  tmp, k)
         print('\n ###PAGE: ', k, len(image_data))
-        tmp = get_caption_tab(tmp, image_data, table_data)
+        tmp = get_caption(tmp, image_data, table_data)
         data = data + tmp # Metto immagini in fondo alla pagina ! ! 
     
     save_json = save +'json/' + name +'.json' 
@@ -173,90 +149,7 @@ def find_images_bbox(doc, page, k):
         image_bbox = page.get_image_bbox(image_list[i])
         print('image {} Bbox: {}'.format(i, image_bbox))
 
-def get_dict(box, style, size, font, page, text, type):
-    return {'box': box, 'style': style, 'size': size, 'font': font, 'page': page, 'text': text, 'type': type}
-
-def get_style(flags):
-    if  bool(flags & 2**4):
-        style = 'bold'
-    elif bool(flags & 2**1):
-        style = 'italic'
-    else:
-        style = 'normal'
-    return style
-
-def get_image(file, save, name):
-    # Convert PDF to images
-    images = convert_from_path(file)
-
-    # Save each page as an image
-
-    if not os.path.exists(save +'images/' +name):
-        os.makedirs(save + 'images/' + name)
-
-    for i in range(len(images)):
-        images[i].save(save +'images/' +name + '/' +name + '_' +str(i) + '.jpg', 'JPEG')  
-  
-
-def get_color(type):
-    if type == 'img':
-        color = 'magenta'
-    elif type == 'tab':
-        color = 'yellow'
-    elif type == 'linee':
-        color = 'cyan'
-    elif type == 'draw':
-        color = 'green'
-    else:
-        color = 'black'
-    return color 
-
-def draw_all(path, data, name_im):
-    list_image = os.listdir(path)
-    name = path + name_im + '_0.jpg'
-    #for im in list_image:
-    image = Image.open(name)
-    draw = ImageDraw.Draw(image)
-    w , h = image.size
-    wp, hp = dimension_pdf(pdf_path)
-    print('qqq' , image.size)
-    i = 0
-    for d in data:
-        if i >0 and data[i]['page'] != data[i-1]['page'] :
-            path_save = 'bb_check/' + name_im + '_' +str(data[i-1]['page']) + '.jpg'
-            image.save(path_save)
-
-            name = path + name_im + '_' + str(data[i]['page']) + '.jpg'
-            image = Image.open(name)
-            draw = ImageDraw.Draw(image)
-        color = get_color(data[i]['type'])
-        draw.rectangle(bb_scale(d['box'], w, h, float(wp), float(hp)), outline = color, width=5) 
-        #image.save('zzz/page0_bb'+ str(i) +'.jpg')
-        
-        i = i + 1
-
-# x: w = xo : 600
- # x: w = xo : 800
-def bb_scale(bb, w, h, wp, hp):
-    x0 = (bb[0]*w) / wp
-    y0 = (bb[1]*h) / hp
-    x1 = (bb[2]*w) / wp
-    y1 = (bb[3]*h) / hp
-
-    return x0,y0,x1,y1
-
-def dimension_pdf(pdf_path):
-    with open(pdf_path, 'rb') as file:
-
-        reader = PdfReader(file)
-        page = reader.pages[0]
-
-        width = page.mediabox[2]
-        height = page.mediabox[3]
-    return width, height
-
-
-def get_caption_tab(data, image_data, table_data):
+def get_caption(data, image_data, table_data):
     cap_im_tab = []
     new_data = []
     count_im = 0
@@ -283,8 +176,8 @@ def get_caption_tab(data, image_data, table_data):
                 #print('|Tab -> ', i['text'],  table_data[count_tab]['box'])
                 count_tab = count_tab + 1
         else:
-            if count_tab< len(table_data) \
-                 and check_overlap(i['box'], table_data[count_tab]['box'])==0.0:
+            if (count_tab< len(table_data) \
+                 and check_overlap(i['box'], table_data[count_tab]['box'])==0.0):
                  new_data.append(i) # Tolgo da dentro i caption di fig e tab
             elif count_tab>= len(table_data):# or (len(table_data)== 1 and count_im==0 ): # non ci sono piu tabelle
                 new_data.append(i)
@@ -296,44 +189,124 @@ def get_caption_tab(data, image_data, table_data):
    # print(len(image_data))
     new_data = new_data + cap_im_tab
     return new_data
-'''
-if 'Figure' in i['text'] and i['size']<10.2 and \
-            count_im < len(image_data) and \
-                image_data[count_im]['box'][3]- 20 <  i['box'][1] < image_data[count_im]['box'][3]+ 20:
-             #
-'''
 
-# per ogni pagina singola !
-def get_caption_fig(data, image_data, table_data):
-    cap_im_tab = []
-    new_data = []
-    count_im = 0
-    count_tab = 0
+def get_dict(box, style, size, font, page, text, type):
+    return {'box': box, 'style': style, 'size': size, 'font': font, 'page': page, 'text': text, 'type': type}
 
-    i = len(data) - 1
-    k = len(image_data) - 1 
-    while i >= 0: # in questo modo dopo immagine o tabella ho la caption associata
+def get_style(flags):
+    if  bool(flags & 2**4):
+        style = 'bold'
+    elif bool(flags & 2**1):
+        style = 'italic'
+    else:
+        style = 'normal'
+    return style
+
+def get_image(file, save, name):
+    # Convert PDF to images
+    images = convert_from_path(file)
+
+    # Save each page as an image
+
+    if not os.path.exists(save +'images/' +name):
+        os.makedirs(save + 'images/' + name)
+
+    for i in range(len(images)):
+        images[i].save(save +'images/' +name + '/' +name + '_' +str(i) + '.jpg', 'JPEG')  
+     
+def draw_bb_one(pdf, bounding_box, image_bboxes):
+    name = 'page0.jpg'
+    image = Image.open(name)
+    draw = ImageDraw.Draw(image)
+    w , h = image.size
+    wp, hp = dimension_pdf(pdf_path)
+    print('qqq' , image.size)
+    i = 0
+
+    for bb in bounding_box:
+        draw.rectangle(bb_scale(bb, w, h, float(wp), float(hp)), outline = 'black') 
+        #image.save('zzz/page0_bb'+ str(i) +'.jpg')
+        i = i + 1
+    for im in image_bboxes:
+        draw.rectangle(bb_scale(im, w, h, float(wp), float(hp)), outline = 'purple' , width=3) 
+
+    image.save('page0_bb.jpg')
+
+def get_color(type):
+    if type == 'img':
+        color = 'magenta'
+    elif type == 'tab':
+        color = 'purple'
+    else:
+        color = 'black'
+    return color 
+
+def draw_all(path, data, name_im):
+    name = path + name_im + '_0.jpg' # iniz.
+
+    image = Image.open(name)
+    draw = ImageDraw.Draw(image)
+    w , h = image.size
+    wp, hp = dimension_pdf(pdf_path)
+    print('qqq' , image.size)
+    i = 0
+    for d in data:
         
-        # trovo la caption 
-        if 'Figure' in data[i]['text'] : # si può trovare anche le testo !!
-            ''
-        i = i - 1
-              
+        
+        if i >0 and data[i]['page'] != data[i-1]['page'] :
+            #path_save = 'bb_check/' + name_im + '_' +str(data[i-1]['page']) + '.jpg'
+            path_save = path + name_im + '_' +str(data[i-1]['page']) + '.jpg'
 
-    return new_data
+            image.save(path_save)
 
+            name = path + name_im + '_' + str(data[i]['page']) + '.jpg'
+            image = Image.open(name)
+            draw = ImageDraw.Draw(image)
+        color = get_color(data[i]['type'])
+        draw.rectangle(bb_scale(d['box'], w, h, float(wp), float(hp)), outline = color) 
+        #image.save('zzz/page0_bb'+ str(i) +'.jpg')
+        
+        i = i + 1
 
+# x: w = xo : 600
+ # x: w = xo : 800
+def bb_scale(bb, w, h, wp, hp):
+    x0 = (bb[0]*w) / wp
+    y0 = (bb[1]*h) / hp
+    x1 = (bb[2]*w) / wp
+    y1 = (bb[3]*h) / hp
+
+    return x0,y0,x1,y1
+
+def dimension_pdf(pdf_path):
+        # Apri il file PDF in lettura binaria
+    with open(pdf_path, 'rb') as file:
+        # Crea un oggetto PdfFileReader
+        reader = PdfReader(file)
+        
+        # Ottieni la prima pagina (indice 0)
+        page = reader.pages[0]
+        
+        # Ottieni le dimensioni della pagina
+      #  print(page.mediabox)
+        width = page.mediabox[2]
+        height = page.mediabox[3]
+        
+        # Stampa le dimensioni
+      #  print(f"Width = {width}, Height = {height}")
+    return width, height
 
 if __name__ == '__main__':
-    
-        dir = 'acl_anthology_pdfs/'
-        save_path = 'dataset_parse/'
-    
-        list_doc = os.listdir(dir) # Ciclare su PDF TODO
+    # Example usage
+    # Directory to save the PDFs
+    dir = 'acl_anthology_pdfs/'
+    save_path = 'dataset_parse/'
+
+    list_doc = os.listdir(dir) # Ciclare su PDF TODO
    # pdf = list_doc[2]
     #pdf ='2022.naacl-demo.0.pdf'
-    #for pdf in list_doc:
-        pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
+    for pdf in list_doc:
+       # pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
         print(pdf)
         pdf_path = dir + pdf
 
@@ -344,3 +317,18 @@ if __name__ == '__main__':
         data = parse_pymupdf(pdf_path, name, save_path)
 
         draw_all(save_path + 'images/' + name +'/', data, name)
+        #bb, f_style, f_size, font, text, image_bboxes = parse_pymupdf(pdf_path)
+        #draw_bb(pdf,bb, image_bboxes)
+        #data = combine_bb(bb, f_style, f_size, font, text)
+        
+        # save_json = 'json_parse/' + 'prova.json' 
+        # with open(save_json, 'w') as f:
+        #     json.dump(data, f, indent=4)
+        #draw_bb(pdf, new_bb)
+
+
+# Estrarre immagini -> folder / image / image0.png
+# Creare Json
+
+# |json  -> / name.json
+# |image -> / name / name_0.png

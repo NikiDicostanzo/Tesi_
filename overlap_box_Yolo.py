@@ -46,8 +46,11 @@ def sort_bounding_boxes(boxes, labels):
     return sorted_box_label_pairs
 
 #TODO #################
-alab = ["sec1", "sec2","sec3","fstline","para","equ","tab","fig","meta","other"] # New 9
+#alab = ["sec1", "sec2","sec3","fstline","para","equ","tab","fig","meta","other"] # New 9
 #alab = ["sec","para","fig","meta","cap"] # New 9
+alab = ['author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
+    'fig', 'mail', 'secx', 'title', 
+    'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili', 'header']
 
 #alab = ["title", "sec1", "sec2","sec3","fstline","equ","tab","fig","other"]
 def create_json(data, sorted_boxes, page):
@@ -210,7 +213,9 @@ import natsort
 # Merge su tutte le immagini
 def merge_all_image(folder, type_img):
     # txt e img devono avere stesso nome!
-    path_images = folder + 'images/'#'zexp_yolo_9_hrdh/images/'
+   # path_images = folder + 'images/'#'zexp_yolo_9_hrdh/images/'
+    path_images = '../dataset_hrdhs_allClass/test/images/'#'zexp_yolo_9_hrdh/images/'
+
      #folder + 'images/' '../dataset_yolo_hrds/test/images/'#
     path_txt = folder + 'labels/'
     images_detect = folder + 'detect/'
@@ -281,5 +286,5 @@ if __name__ == '__main__':
     #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
     #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
 
-    folder = 'yolo_hrdhs_672_9/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
+    folder = 'yolo_hrdhs_672_all/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
     merge_all_image(folder, '.png')
