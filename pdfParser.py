@@ -58,17 +58,13 @@ def combine_bb(bb, f_style, f_size, font, text, k):
     new_text = ''
     #dict_data = {'box' : , 'style': , 'size': , 'font': , 'text': }
     for i in range(len(bb)):
-        if i < len(bb)-1 and k == 2:
-            print(comb,'|',text[i], '|', text[i+1], bb[i], '| \n', bb[i+1], )
-        
+       
         if i < len(bb)-1 and (bb[i+1][1]) - 8 <=(bb[i][1]) <= (bb[i+1][1]) + 8 \
             and (((bb[i+1][0]) - 15 <= (bb[i][2]) <= (bb[i+1][0]) + 15) \
                  or ((bb[i+1][0]) - 10 <= (bb[i][0]) <= (bb[i+1][0]) + 10)) \
                     and ((f_style[i] == 'bold' and f_style[i+1] == 'bold') \
                          or (f_style[i] in ['italic', 'normal'] and f_style[i+1] in ['italic', 'normal'] )):
-           # if k == 2:
-           #    print('Dentro IF','|',bb[i], '| \n', bb[i+1], text[i], '|', text[i+1])
-        
+       
             if comb: # ha fatto gia dei merge
                 x0 = min(x0, bb[i+1][0])
                 y0 = min(y0, bb[i+1][1])
@@ -104,16 +100,13 @@ def combine_bb(bb, f_style, f_size, font, text, k):
         else:
             
             if comb:
-                if k == 2:
-                    print('true |',new_text, '\n')
                 new_bb.append([x0, y0, x1, y1])
                 dict_data = get_dict([x0, y0, x1, y1], f_style[i], f_size[i], font[i], k, new_text, 'text')
                 comb = False
             else:
                 dict_data = get_dict(bb[i], f_style[i], f_size[i], font[i], k, text[i], 'text')
                 new_bb.append(bb[i])
-                if k == 2:
-                    print('False', text[i], '\n')
+                
             data.append(dict_data)
             new_text = ''    
     return data    
@@ -199,7 +192,8 @@ def get_image(file, save, name):
     check_folder(save +'images/' +name)
 
     for i in range(len(images)):
-        images[i].save(save +'images/' +name + '/' +name + '_' +str(i) + '.jpg', 'JPEG') 
+       # images[i].save(save +'images/' +name + '/' +name + '_' +str(i) + '.jpg', 'JPEG') 
+        images[i].save(save +'image_test/' +name + '_' +str(i) + '.jpg', 'JPEG') 
 
 def check_folder(path):
     if not os.path.exists(path):
@@ -296,14 +290,16 @@ def parse_pymupdf(path, name, save):
 
 if __name__ == '__main__':
     
-        dir = 'acl_anthology_pdfs/'
-        save_path = 'dataset_parse/'
+    dir = 'acl_anthology_pdfs/'
+    save_path = 'dataset_parse/'
     
-        list_doc = os.listdir(dir) # Ciclare su PDF TODO
-   # pdf = list_doc[2]
+    list_doc = os.listdir(dir) # Ciclare su PDF TODO
+    #pdf = list_doc[2]
     #pdf ='2022.naacl-demo.0.pdf'
-    #for pdf in list_doc:
-        pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
+    print(len(list_doc))
+
+    for pdf in list_doc:
+      #  pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
         print(pdf)
         pdf_path = dir + pdf
 
@@ -311,7 +307,9 @@ if __name__ == '__main__':
         
         # Get image from PDF
         get_image(pdf_path, save_path, name)
-        data = parse_pymupdf(pdf_path, name, save_path)
-        new_path = 'bb_draw_parse/'
-        check_folder(new_path)
-        draw_all(save_path + 'images/' + name +'/', data, name, new_path)
+        #data = parse_pymupdf(pdf_path, name, save_path)
+        # new_path = 'bb_draw_parse/'
+        # check_folder(new_path)
+        # draw_all(save_path + 'images/' + name +'/', data, name, new_path)
+
+#1355

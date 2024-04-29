@@ -45,13 +45,13 @@ def sort_bounding_boxes(boxes, labels):
     # Ricostruisce l'ordine originale delle labels
     return sorted_box_label_pairs
 
-#TODO #################
+#TODO ################# ########################################################################
 #alab = ["sec1", "sec2","sec3","fstline","para","equ","tab","fig","meta","other"] # New 9
 #alab = ["sec","para","fig","meta","cap"] # New 9
-alab = ['author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
-    'fig', 'mail', 'secx', 'title', 
-    'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili', 'header']
-
+# alab = ['author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
+#     'fig', 'mail', 'secx', 'title', 
+#     'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili', 'header']
+alab = ["tab", "fig", "alg"]
 #alab = ["title", "sec1", "sec2","sec3","fstline","equ","tab","fig","other"]
 def create_json(data, sorted_boxes, page):
     #text
@@ -168,6 +168,7 @@ def marge_bb(bb, labels, confidence):
                 marge_box = True                    
             j +=1
             # elfi # aggiugnere se si sopvrappongono e classi diverse di prendere quella con confidenza >
+      #  
         if marge_box : 
             #if [x0,y0,x1,y1] not in tmp:
             tmp.append([x0,y0,x1,y1])  
@@ -197,6 +198,7 @@ def get_bb_merge(path_image, txt, path_save, detect):
 
     sorted_bb_x, sorted_labels_x, sorted_confidence_x = sort_data(bb_y, labels_y, confidence_y, 0)
     new_bb, new_labels, _ = marge_bb(list(sorted_bb_x), list(sorted_labels_x), list(sorted_confidence_x)) #x
+    
     draw_bb(new_bb, image, new_labels)
     if path_save != '':
         if detect != '': ## Per visualizzare in un'unica immagine
@@ -214,7 +216,7 @@ import natsort
 def merge_all_image(folder, type_img):
     # txt e img devono avere stesso nome!
    # path_images = folder + 'images/'#'zexp_yolo_9_hrdh/images/'
-    path_images = '../dataset_hrdhs_allClass/test/images/'#'zexp_yolo_9_hrdh/images/'
+    path_images = 'dataset_parse/image_test/'#'zexp_yolo_9_hrdh/images/'
 
      #folder + 'images/' '../dataset_yolo_hrds/test/images/'#
     path_txt = folder + 'labels/'
@@ -260,7 +262,7 @@ def merge_all_image(folder, type_img):
         #if d == 'ACL_P17-1140_9.png': #ACL_2020.acl-main.640_7.png
         #    print('qui')
         if os.path.exists(txt):
-            new_bb, new_labels = get_bb_merge(path_image, txt, save_image, detect)
+            new_bb, new_labels = get_bb_merge(path_image, txt, save_image, detect)#save_image
             #Ordino in base alla loro posizione nel doc
             sorted_boxes = sort_bounding_boxes(new_bb, new_labels)
         else:
@@ -286,5 +288,5 @@ if __name__ == '__main__':
     #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
     #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
 
-    folder = 'yolo_hrdhs_672_all/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
-    merge_all_image(folder, '.png')
+    folder = 'yolo_hrdhs_3_/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
+    merge_all_image(folder, '.jpg')
