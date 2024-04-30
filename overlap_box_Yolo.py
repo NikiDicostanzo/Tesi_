@@ -168,15 +168,20 @@ def marge_bb(bb, labels, confidence):
                 marge_box = True                    
             j +=1
             # elfi # aggiugnere se si sopvrappongono e classi diverse di prendere quella con confidenza >
-      #  
-        if marge_box : 
-            #if [x0,y0,x1,y1] not in tmp:
-            tmp.append([x0,y0,x1,y1])  
-            marge_box = False
-            tmp_lab.append(my_lab)
+      # TODO
+        if labels[k] == 0: #tab
+            trhold = 0.00
         else:
-            tmp.append(bb[k])
-            tmp_lab.append(labels[k])
+            trhold = 0.00 #fig
+        if confidence[k]> trhold:
+            if marge_box : 
+                #if [x0,y0,x1,y1] not in tmp:
+                tmp.append([x0,y0,x1,y1])  
+                marge_box = False
+                tmp_lab.append(my_lab)
+            else:
+                tmp.append(bb[k])
+                tmp_lab.append(labels[k])
         k +=1 
         
     remove = sorted(list(set(remove)))
@@ -190,26 +195,30 @@ def marge_bb(bb, labels, confidence):
 
 # Merge su una immagine
 def get_bb_merge(path_image, txt, path_save, detect):
+
+    new_bb = []
+    new_labels = []
+
     image = Image.open(path_image)
     bb, labels, confidence = get_bb(txt,image)
 
     sorted_bb_y, sorted_labels_y, sorted_confidence_y  = sort_data(bb, labels, confidence, 1)
     bb_y, labels_y, confidence_y = marge_bb(list(sorted_bb_y), list(sorted_labels_y), list(sorted_confidence_y)) #y
-
-    sorted_bb_x, sorted_labels_x, sorted_confidence_x = sort_data(bb_y, labels_y, confidence_y, 0)
-    new_bb, new_labels, _ = marge_bb(list(sorted_bb_x), list(sorted_labels_x), list(sorted_confidence_x)) #x
+    if len(bb_y) >0:
+        sorted_bb_x, sorted_labels_x, sorted_confidence_x = sort_data(bb_y, labels_y, confidence_y, 0)
+        new_bb, new_labels, _ = marge_bb(list(sorted_bb_x), list(sorted_labels_x), list(sorted_confidence_x)) #x
     
-    draw_bb(new_bb, image, new_labels)
-    if path_save != '':
-        if detect != '': ## Per visualizzare in un'unica immagine
-            ###
-            image_detect = Image.open(detect) # immagine di yolo
-            dst = get_concat_h(image, image_detect)  
-            dst.save(path_save)
-        else:
-            image.save(path_save)
-    #else:
-    #    image.show()
+        draw_bb(new_bb, image, new_labels)
+        if path_save != '':
+            if detect != '': ## Per visualizzare in un'unica immagine
+                ###
+                image_detect = Image.open(detect) # immagine di yolo
+                dst = get_concat_h(image, image_detect)  
+                dst.save(path_save)
+            else:
+                image.save(path_save)
+        #else:
+        #    image.show()
     return new_bb, new_labels
 import natsort
 # Merge su tutte le immagini
@@ -217,6 +226,7 @@ def merge_all_image(folder, type_img):
     # txt e img devono avere stesso nome!
    # path_images = folder + 'images/'#'zexp_yolo_9_hrdh/images/'
     path_images = 'dataset_parse/image_test/'#'zexp_yolo_9_hrdh/images/'
+    #'../dataset_hrdhs_3class/test/images/'#
 
      #folder + 'images/' '../dataset_yolo_hrds/test/images/'#
     path_txt = folder + 'labels/'
@@ -288,5 +298,5 @@ if __name__ == '__main__':
     #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
     #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
 
-    folder = 'yolo_hrdhs_3_/'#'C:/Users/ninad/Desktop/test_Exp_S/' #1501.04826/'
+    folder = 'yolo_hrdhs_3_scale_acl/' #'yolo_hrdhs_3_/' #1501.04826/'
     merge_all_image(folder, '.jpg')

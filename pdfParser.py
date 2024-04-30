@@ -188,12 +188,16 @@ def get_style(flags):
 # Convert PDF to images
 def get_image(file, save, name):
     images = convert_from_path(file)
+    width = 596
+    height = 842
 
     check_folder(save +'images/' +name)
 
     for i in range(len(images)):
        # images[i].save(save +'images/' +name + '/' +name + '_' +str(i) + '.jpg', 'JPEG') 
-        images[i].save(save +'image_test/' +name + '_' +str(i) + '.jpg', 'JPEG') 
+        img_resized = images[i].resize((width, height), Image.LANCZOS)
+       # images[i].save(save +'image_test/' +name + '_' +str(i) + '.jpg', 'JPEG') 
+        img_resized.save(save +'image_test/' +name + '_' +str(i) + '.jpg', 'JPEG') 
 
 def check_folder(path):
     if not os.path.exists(path):
@@ -278,9 +282,10 @@ def parse_pymupdf(path, name, save):
 
         tmp_data, bb, f_style, f_size, font, text = get_text(all_infos, bb, f_size, f_style, font, text, k)
         
-        tmp = combine_bb(bb, f_style, f_size, font, text, k)    
+        tmp = combine_bb(bb, f_style, f_size, font, text, k) 
+        imm = get_images(k, page)   
         #tmp = get_caption_tab(tmp, image_data, table_data) # TODO image and table # Metto immagini in fondo alla pagina ! !
-        data = data + tmp  
+        data = data + tmp  + imm
     
     save_json = save +'json/' + name +'.json' 
     with open(save_json, 'w') as f:
@@ -300,6 +305,7 @@ if __name__ == '__main__':
 
     for pdf in list_doc:
       #  pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
+        #pdf = "2023.acl-long.150.pdf"#'2022.naacl-demo.4.pdf'
         print(pdf)
         pdf_path = dir + pdf
 
@@ -307,9 +313,9 @@ if __name__ == '__main__':
         
         # Get image from PDF
         get_image(pdf_path, save_path, name)
-        #data = parse_pymupdf(pdf_path, name, save_path)
-        # new_path = 'bb_draw_parse/'
-        # check_folder(new_path)
-        # draw_all(save_path + 'images/' + name +'/', data, name, new_path)
+        """  data = parse_pymupdf(pdf_path, name, save_path)
+        new_path = 'bb_draw_parse/'
+        check_folder(new_path)
+        draw_all(save_path + 'images/' + name +'/', data, name, new_path) """
 
 #1355
