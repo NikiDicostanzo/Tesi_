@@ -1,13 +1,13 @@
 import torch
 #from plot_edge_multipage_YOLO_new import get_graph_yolo
-from plot_edge_multipage_YOLO5 import get_graph_yolo
+from z_boh.plot_edge_multipage_YOLO5 import get_graph_yolo
 
 from create_graphGT import get_one_g, get_graphs
 
 from create_graphGT_3lab import get_graphs_gt
 import numpy as np
 
-from plot_edge_multipage_GT_Merge import get_graph_merge_gt
+from z_boh.plot_edge_multipage_GT_Merge import get_graph_merge_gt
 import os
 import torch.nn.functional as F
 import dgl
@@ -15,7 +15,6 @@ from sklearn.model_selection import train_test_split
 #from plot_edge_multipage_YOLO import get_graph
 #from Tesi_.model2_git import EdgeClassifier
 from model import Model
-from model3 import Model3
 
 # Eseguire train del modello (devo crearlo )
 # Batch dei grafi !!

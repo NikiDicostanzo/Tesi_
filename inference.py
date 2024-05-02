@@ -10,7 +10,7 @@ import os
 import dgl
 from PIL import Image, ImageDraw as D
 from train import get_nfeatures
-from plot_edge_multipage_GT_Merge import get_graph_merge_gt
+from z_boh.plot_edge_multipage_GT_Merge import get_graph_merge_gt
 
 from evaluation import get_cm
 
