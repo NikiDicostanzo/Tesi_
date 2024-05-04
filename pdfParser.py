@@ -5,6 +5,7 @@ from PyPDF2 import PdfReader
 import fitz
 import json
 from overlap_box_Yolo import check_overlap
+import re
 
 # Deprecated (?) -> YOLO
 def get_caption_tab(data, image_data, table_data):
@@ -58,45 +59,52 @@ def combine_bb(bb, f_style, f_size, font, text, k):
     new_text = ''
     #dict_data = {'box' : , 'style': , 'size': , 'font': , 'text': }
     for i in range(len(bb)):
-       
-        if i < len(bb)-1 and (bb[i+1][1]) - 8 <=(bb[i][1]) <= (bb[i+1][1]) + 8 \
-            and (((bb[i+1][0]) - 15 <= (bb[i][2]) <= (bb[i+1][0]) + 15) \
-                 or ((bb[i+1][0]) - 10 <= (bb[i][0]) <= (bb[i+1][0]) + 10)) \
-                    and ((f_style[i] == 'bold' and f_style[i+1] == 'bold') \
-                         or (f_style[i] in ['italic', 'normal'] and f_style[i+1] in ['italic', 'normal'] )):
-       
-            if comb: # ha fatto gia dei merge
-                x0 = min(x0, bb[i+1][0])
-                y0 = min(y0, bb[i+1][1])
+       #(bb[i+1][1]) - 8 <=(bb[i][1]) <= (bb[i+1][1]) + 8
+        if i < len(bb)-1 and (((0<=(bb[i+1][1] - bb[i][1]) <= 3 \
+                                or 0<=(bb[i+1][3] - bb[i][3]) <= 3)
+            and ((abs(bb[i+1][0] - bb[i][2]) <= 5) or   \
+                (abs(bb[i+1][0] - bb[i][2]) <= 15 and f_style[i] == f_style[i+1])))):# \
+                    #or check_overlap(bb[i],bb[i+1])>0.1):# \
 
-                if  f_size[i]<= f_size[i+1] \
-                    and ((f_style[i] in ['normal', 'italic'] \
-                    and f_style[i+1] == 'italic') or ((f_style[i+1] in ['normal', 'italic'] and f_style[i] == 'italic'))):
-                   # x1 = min(x1, bb[i+1][2])
-                    y1 = min(y1, bb[i+1][3])
-                    f_style[i+1] = 'normal'
-                    #f_size[i+1] = f_size[i]
-                else: 
+                    # and ((f_style[i] == 'bold' and f_style[i+1] == 'bold') \
+                    #      or (f_style[i] in ['italic', 'normal'] and f_style[i+1] in ['italic', 'normal'] )\
+                    #     or (bb[i][2] - bb[i][0]< 13)\
+                    #     or ( bb[i+1][2] - bb[i+1][0]< 13)):
+            #if check_overlap(bb[i],bb[i+1])>0:
+            #    print(check_overlap(bb[i],bb[i+1]), '|' , text[i], '|' , text[i+1], )
+            if comb: # ha fatto gia dei merge
+                
+                if bb[i+1][2]-bb[i+1][0]<11 and contiene_simboli_speciali(text[i+1]):
+                    y0 = y0
+                    y1 = y1
+                elif x1-x0<11 and contiene_simboli_speciali(new_text):
+                    y0 = (bb[i+1][1])
+                    y1 = (bb[i+1][3])
+                else:
                     y1 = max(y1, bb[i+1][3])
+                    y0 = min(y0, bb[i+1][1])
+                x0 = min(x0, bb[i+1][0])                
                 x1 = max(x1, bb[i+1][2])
                 
                 new_text = new_text + ' ' + text[i+1]
             else:   
                 new_text = text[i] + ' ' + text[i+1]
-                
-                x0 = min(bb[i][0], bb[i+1][0])
-                y0 = min(bb[i][1], bb[i+1][1])
 
-                if  ((f_style[i] == 'normal' and f_style[i+1] == 'italic') or ((f_style[i+1] == 'normal' and f_style[i] == 'italic'))): # Caratteri corsivi hanno bb piu grandi/sbagliate
-                   # x1 = min(bb[i][2], bb[i+1][2])
-                    y1 = min(bb[i][3], bb[i+1][3])
-                    f_style[i+1] = 'normal'
-                   # f_size[i+1] = f_size[i]
+                if bb[i+1][2]-bb[i+1][0]<11 and contiene_simboli_speciali(text[i+1]):
+                    y0 = (bb[i][1])
+                    y1 = (bb[i][3])
+                elif bb[i][2]-bb[i][0]<11 and contiene_simboli_speciali(text[i]):
+                    y0 = (bb[i+1][1])
+                    y1 = (bb[i+1][3])
                 else:
+                    y0 = min(bb[i][1], bb[i+1][1])
                     y1 = max(bb[i][3], bb[i+1][3])
+                x0 = min(bb[i][0], bb[i+1][0])
                 x1 = max(bb[i][2], bb[i+1][2])
                 comb = True
           #  draw.rectangle(bb_scale([x0, y0, x1, y1], w, h, float(wp), float(hp)), outline = 'cyan') 
+           # if f_style[i] != 'bold' and f_style[i+1] == 'bold' and bb[i][2] - bb[i][0]< 13 and bb[i+1][2] - bb[i+1][0]> 13:
+           #     f_style[i+1] = f_style[i]
         else:
             
             if comb:
@@ -109,19 +117,45 @@ def combine_bb(bb, f_style, f_size, font, text, k):
                 
             data.append(dict_data)
             new_text = ''    
-    return data    
+    return data 
+   
+def contiene_simboli_speciali(stringa):
+    # Pattern per cercare qualsiasi carattere che non sia una lettera, un numero o uno spazio
+    pattern = re.compile('[^a-zA-Z0-9 ]')
+    return bool(pattern.search(stringa))
 
 def get_text(all_infos, bb, f_size, f_style, font, text, k):
     tmp = []
+    conunt_block = 0
+    
+    # Crea una regex che corrisponda a qualsiasi carattere che non sia una lettera
+    regex = r'[^\u]'
+
+   
     for block in all_infos['blocks']:
+       # print(block)
         if 'lines' in block:
             for line in block['lines']:
+                c = 0
                 for span in line['spans']:
                     flags = span['flags']
                         #print(span['flags'], '\n')
                     style = get_style(flags)
-                        
-                    bb.append(span['bbox'])   
+                    #if "u00b5" in span['text']:
+                    if c>2 and len(span['text'])<4 and contiene_simboli_speciali(span['text']):
+                        print(line['spans'][c-2]['text'], line['spans'][c-1]['bbox'][2] - span['bbox'][0], 'h:',span['bbox'][3]-span['bbox'][1],' w:', span['bbox'][2]-span['bbox'][0], span['text'])
+                   
+                    if (span['size']< (span['bbox'][3]-span['bbox'][1]) \
+                        and (span['bbox'][3]-span['bbox'][1]-span['size'])>6):
+                        p_m = (span['bbox'][3]+span['bbox'][1])/2
+                        if c > 0 and (0<=line['spans'][c-1]['bbox'][2] - span['bbox'][0])<12 :
+                            y0 = line['spans'][c-1]['bbox'][1] # se quello precedente è attaccato
+                            y1 = line['spans'][c-1]['bbox'][3]
+                        else:
+                            y0 = p_m - (span['size'])
+                            y1  = p_m + span['size']/2
+                        span['bbox'] = [span['bbox'][0],y0,span['bbox'][2],y1]
+                    bb.append(span['bbox'])#span['bbox'])   
                     f_size.append(span['size'])
                     f_style.append(style)
                     font.append(span['font'])
@@ -129,6 +163,8 @@ def get_text(all_infos, bb, f_size, f_style, font, text, k):
 
                     dict_data = get_dict(span['bbox'], style, span['size'], span['font'], k, span['text'], 'text')
                     tmp.append(dict_data)
+                    c= c+1
+        conunt_block = conunt_block + 1
     return tmp, bb, f_style, f_size, font, text
 
 def get_line(k, page):
@@ -285,7 +321,7 @@ def parse_pymupdf(path, name, save):
         tmp = combine_bb(bb, f_style, f_size, font, text, k) 
        # imm = get_images(k, page)   
        # #tmp = get_caption_tab(tmp, image_data, table_data) # TODO image and table # Metto immagini in fondo alla pagina ! !
-        data = data + tmp  #+ imm
+        data = data + tmp#_data  #+ imm
     
     save_json = save +'json_parse/' + name +'.json' 
     with open(save_json, 'w') as f:
@@ -295,15 +331,16 @@ def parse_pymupdf(path, name, save):
 
 if __name__ == '__main__':
     
-    dir =  'acl_anthology_pdfs_test/'#'acl_anthology_pdfs/'
-    save_path = 'yolo_hrdhs_672_3_testGT2/'#'dataset_parse/'
-    
-    list_doc = os.listdir(dir) # Ciclare su PDF TODO
-    #pdf = list_doc[2]
-    #pdf ='2022.naacl-demo.0.pdf'
-    print(len(list_doc))
+        dir =  'acl_anthology_pdfs_test/'#'acl_anthology_pdfs/'
+        save_path = 'yolo_hrdhs_672_3_testGT2/'#'dataset_parse/'
+        
+        list_doc = os.listdir(dir) # Ciclare su PDF TODO
+        #pdf = list_doc[2]
+        #pdf ='2022.naacl-demo.0.pdf'
+        print(len(list_doc))
 
-    for pdf in list_doc:
+    #for pdf in list_doc:
+        pdf = '2020.acl-main.99.pdf'
       #  pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
         #pdf = "2023.acl-long.150.pdf"#'2022.naacl-demo.4.pdf'
         print(pdf)
