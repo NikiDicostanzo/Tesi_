@@ -104,7 +104,7 @@ def get_data(path_json, path_image, folder, pagine, name,num,data_type):
                 
                 save_im = save_im_path + name_image
                 image.save(save_im) 
-            if data[index]['class'] in ['tab', 'fig', 'alg']:
+            if data[index]['class'] in ['tab', 'fig', 'alg', 'equ']:
                 class_lab = set_class_3(data, index)#set_class_all(data, index)
                 #set_class_nine(data, index)
                 #class_lab = set_class_four(data, index)
@@ -182,6 +182,8 @@ def set_class_3(data, index):
         class_lab = '1'
     elif name_class == 'alg':
         class_lab = '2'
+    elif name_class == 'equ':
+        class_lab = '3'
     return class_lab
 
 def set_class_nine(data, index):
@@ -210,9 +212,10 @@ def set_class_nine(data, index):
         class_lab = '9'
     return class_lab
 
-class_all = ['author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
-    'fig', 'mail', 'secx', 'title', 
-    'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili', 'header']
+# class_all = ['author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
+#     'fig', 'mail', 'secx', 'title', 
+#     'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili', 'header']
+class_all = ['tab', 'fig', 'alg', 'equ']
 
 def set_class_all(data, index):
     name_class = data[index]['class'] 
@@ -241,7 +244,7 @@ def all_json(path_json, path_images, name_dataset, data_type):
             else:
                 image = path_image #TODO + name per HRDS !!!!!!!!! per HRDH togli name
 
-            folder = "../dataset_hrdhs_3class/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+            folder = "../dataset_hrds_4class/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
             create_folder(folder)
             pagine,num = get_data(json, image, folder, pagine, name, num, data_type)
             

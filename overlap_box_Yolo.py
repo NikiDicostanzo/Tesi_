@@ -51,7 +51,7 @@ def sort_bounding_boxes(boxes, labels):
 # alab = ['author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
 #     'fig', 'mail', 'secx', 'title', 
 #     'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili', 'header']
-alab = ["tab", "fig", "alg"]
+alab = ["tab", "fig", "alg", "equ"]
 #alab = ["title", "sec1", "sec2","sec3","fstline","equ","tab","fig","other"]
 def create_json(data, sorted_boxes, page):
     #text
@@ -169,15 +169,15 @@ def marge_bb(bb, labels, confidence):
             j +=1
             # elfi # aggiugnere se si sopvrappongono e classi diverse di prendere quella con confidenza >
      
-        if confidence[k]> 0.76:
-            if marge_box : 
-                #if [x0,y0,x1,y1] not in tmp:
-                tmp.append([x0,y0,x1,y1])  
-                marge_box = False
-                tmp_lab.append(my_lab)
-            else:
-                tmp.append(bb[k])
-                tmp_lab.append(labels[k])
+        #if (confidence[k]> 0.76 and my_lab != 'equ') or (confidence[k]> 0.40 and my_lab == 'equ'):
+        if marge_box : 
+            #if [x0,y0,x1,y1] not in tmp:
+            tmp.append([x0,y0,x1,y1])  
+            marge_box = False
+            tmp_lab.append(my_lab)
+        else:
+            tmp.append(bb[k])
+            tmp_lab.append(labels[k])
         k +=1 
         
     remove = sorted(list(set(remove)))
@@ -221,7 +221,7 @@ import natsort
 def merge_all_image(folder, type_img):
     # txt e img devono avere stesso nome!
    # path_images = folder + 'images/'#'zexp_yolo_9_hrdh/images/'
-    path_images = '../dataset_hrdhs_3class/test/images/'#'dataset_parse/image_test/'#'zexp_yolo_9_hrdh/images/'
+    path_images = '../dataset_hrds_4class/test/images/'#'dataset_parse/image_test/'#'zexp_yolo_9_hrdh/images/'
     #'../dataset_hrdhs_3class/test/images/'#
 
      #folder + 'images/' '../dataset_yolo_hrds/test/images/'#
@@ -294,5 +294,5 @@ if __name__ == '__main__':
     #folder = 'C:/Users/ninad/Desktop/Ok_test_exp2_stat_21_2109.00464_vis/'
     #folder = 'C:/Users/ninad/Desktop/ACL_P10-1160_exp2/'
 
-    folder = 'yolo_hrdhs_672_3_testGT2/'#'yolo_hrdhs_3_scale_acl/' #'yolo_hrdhs_3_/' #1501.04826/'
+    folder = 'yolo_hrds_4_gt_test/'#'yolo_hrdhs_3_scale_acl/' #'yolo_hrdhs_3_/' #1501.04826/'
     merge_all_image(folder, '.png')

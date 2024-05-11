@@ -48,6 +48,23 @@ def get_caption_tab(data, image_data, table_data):
     new_data = new_data + cap_im_tab
     return new_data
 
+def check_style(bb, style, ind1, ind2):
+    if style[ind1] in ['normal','italic'] and style[ind2] in ['normal','italic']:
+        return True
+    elif style[ind1] == style[ind2]:
+         return True
+    elif style[ind1] != 'bold' and style[ind2] == 'bold' and get_width(bb[ind1])<get_width(bb[ind2]):
+        return True
+    elif style[ind2] != 'bold' and style[ind1] == 'bold' and get_width(bb[ind2])<get_width(bb[ind1]):
+        return True
+    return False
+
+def get_width(box):
+    return abs(box[2]- box[0])
+
+def get_higth(box):
+    return abs(box[3]-box[1])
+
 def combine_bb(bb, f_style, f_size, font, text, k): 
     comb = False
     new_bb = []
@@ -59,19 +76,18 @@ def combine_bb(bb, f_style, f_size, font, text, k):
     new_text = ''
     #dict_data = {'box' : , 'style': , 'size': , 'font': , 'text': }
     for i in range(len(bb)):
-       #(bb[i+1][1]) - 8 <=(bb[i][1]) <= (bb[i+1][1]) + 8
-        if i < len(bb)-1 and (((0<=(bb[i+1][1] - bb[i][1]) <= 3 \
-                                or 0<=(bb[i+1][3] - bb[i][3]) <= 3)
-            and ((abs(bb[i+1][0] - bb[i][2]) <= 5) or   \
-                (abs(bb[i+1][0] - bb[i][2]) <= 15 and f_style[i] == f_style[i+1])))):# \
-                    #or check_overlap(bb[i],bb[i+1])>0.1):# \
-
-                    # and ((f_style[i] == 'bold' and f_style[i+1] == 'bold') \
-                    #      or (f_style[i] in ['italic', 'normal'] and f_style[i+1] in ['italic', 'normal'] )\
-                    #     or (bb[i][2] - bb[i][0]< 13)\
-                    #     or ( bb[i+1][2] - bb[i+1][0]< 13)):
-            #if check_overlap(bb[i],bb[i+1])>0:
-            #    print(check_overlap(bb[i],bb[i+1]), '|' , text[i], '|' , text[i+1], )
+       # y simile
+       # x simil            
+            
+        if i < len(bb)-1 and \
+            ((check_overlap(bb[i+1], bb[i])>0.01 and \
+              (bb[i][2]-bb[i][0]<10 or bb[i+1][2]-bb[i+1][0]<10)) \
+                or((abs(bb[i+1][1] - bb[i][1]) <= 10 \
+                                or abs(bb[i+1][3] - bb[i][3]) <=10)
+            and ((abs(bb[i+1][0] - bb[i][2]) <= 2) or \
+                 (abs(bb[i+1][0] - bb[i][2]) <= 15 and check_style(bb, f_style, i, i+1))))):#\
+                 #   or (abs(bb[i+1][0] - bb[i][2]) <= 5 and f_style[i] == 'bold')):# \
+                   
             if comb: # ha fatto gia dei merge
                 
                 if bb[i+1][2]-bb[i+1][0]<11 and contiene_simboli_speciali(text[i+1]):
@@ -102,15 +118,25 @@ def combine_bb(bb, f_style, f_size, font, text, k):
                 x0 = min(bb[i][0], bb[i+1][0])
                 x1 = max(bb[i][2], bb[i+1][2])
                 comb = True
+            if 'DOC' in new_text:
+                print(f_style[i], '|', f_style[i+1] )
+                print(new_text, '|', text[i+1])
+
           #  draw.rectangle(bb_scale([x0, y0, x1, y1], w, h, float(wp), float(hp)), outline = 'cyan') 
-           # if f_style[i] != 'bold' and f_style[i+1] == 'bold' and bb[i][2] - bb[i][0]< 13 and bb[i+1][2] - bb[i+1][0]> 13:
-           #     f_style[i+1] = f_style[i]
+            if f_style[i] == 'normal' and f_style[i+1] != 'normal' and get_width(bb[i+1]) < get_width(bb[i]):
+                f_style[i+1] = f_style[i]
+                f_size[i+1] = f_size[i]
+
+           # elif f_style[i] != 'bold' and f_style[i+1] == 'bold'
         else:
-            
             if comb:
                 new_bb.append([x0, y0, x1, y1])
                 dict_data = get_dict([x0, y0, x1, y1], f_style[i], f_size[i], font[i], k, new_text, 'text')
                 comb = False
+                if 'DOC' in new_text:
+                    print('save',f_style[i], '|', f_style[i+1] )
+                    print(new_text, '|', text[i+1])
+                        
             else:
                 dict_data = get_dict(bb[i], f_style[i], f_size[i], font[i], k, text[i], 'text')
                 new_bb.append(bb[i])
@@ -127,11 +153,7 @@ def contiene_simboli_speciali(stringa):
 def get_text(all_infos, bb, f_size, f_style, font, text, k):
     tmp = []
     conunt_block = 0
-    
-    # Crea una regex che corrisponda a qualsiasi carattere che non sia una lettera
-    regex = r'[^\u]'
-
-   
+     
     for block in all_infos['blocks']:
        # print(block)
         if 'lines' in block:
@@ -141,19 +163,16 @@ def get_text(all_infos, bb, f_size, f_style, font, text, k):
                     flags = span['flags']
                         #print(span['flags'], '\n')
                     style = get_style(flags)
-                    #if "u00b5" in span['text']:
-                    if c>2 and len(span['text'])<4 and contiene_simboli_speciali(span['text']):
-                        print(line['spans'][c-2]['text'], line['spans'][c-1]['bbox'][2] - span['bbox'][0], 'h:',span['bbox'][3]-span['bbox'][1],' w:', span['bbox'][2]-span['bbox'][0], span['text'])
-                   
+
                     if (span['size']< (span['bbox'][3]-span['bbox'][1]) \
                         and (span['bbox'][3]-span['bbox'][1]-span['size'])>6):
                         p_m = (span['bbox'][3]+span['bbox'][1])/2
-                        if c > 0 and (0<=line['spans'][c-1]['bbox'][2] - span['bbox'][0])<12 :
-                            y0 = line['spans'][c-1]['bbox'][1] # se quello precedente è attaccato
-                            y1 = line['spans'][c-1]['bbox'][3]
+                        if c > 0 and (abs(line['spans'][c-1]['bbox'][2] - span['bbox'][0]))<10 :
+                            y0 = line['spans'][c-1]['bbox'][1] - 2 # se quello precedente è attaccato
+                            y1 = line['spans'][c-1]['bbox'][3] 
                         else:
-                            y0 = p_m - (span['size'])
-                            y1  = p_m + span['size']/2
+                            y0 = p_m - 2
+                            y1  = p_m + 1
                         span['bbox'] = [span['bbox'][0],y0,span['bbox'][2],y1]
                     bb.append(span['bbox'])#span['bbox'])   
                     f_size.append(span['size'])
@@ -222,6 +241,7 @@ def get_style(flags):
     return style
 
 # Convert PDF to images
+
 def get_image(file, save, name):
     images = convert_from_path(file)
     width = 596
