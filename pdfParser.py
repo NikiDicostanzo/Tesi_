@@ -78,14 +78,14 @@ def combine_bb(bb, f_style, f_size, font, text, k):
     for i in range(len(bb)):
        # y simile
        # x simil            
-            
+            # and '•' not in new_text
         if i < len(bb)-1 and \
             ((check_overlap(bb[i+1], bb[i])>0.01 and \
               (bb[i][2]-bb[i][0]<10 or bb[i+1][2]-bb[i+1][0]<10)) \
                 or((abs(bb[i+1][1] - bb[i][1]) <= 10 \
                                 or abs(bb[i+1][3] - bb[i][3]) <=10)
-            and ((abs(bb[i+1][0] - bb[i][2]) <= 2) or \
-                 (abs(bb[i+1][0] - bb[i][2]) <= 15 and check_style(bb, f_style, i, i+1))))):#\
+            and ((abs(bb[i+1][0] - bb[i][2]) <= 3) \
+                 or (abs(bb[i+1][0] - bb[i][2]) <= 15 and check_style(bb, f_style, i, i+1))))):#\
                  #   or (abs(bb[i+1][0] - bb[i][2]) <= 5 and f_style[i] == 'bold')):# \
                    
             if comb: # ha fatto gia dei merge
@@ -118,7 +118,7 @@ def combine_bb(bb, f_style, f_size, font, text, k):
                 x0 = min(bb[i][0], bb[i+1][0])
                 x1 = max(bb[i][2], bb[i+1][2])
                 comb = True
-            if 'DOC' in new_text:
+            if 'DOC' in new_text and contiene_simboli_speciali(new_text):
                 print(f_style[i], '|', f_style[i+1] )
                 print(new_text, '|', text[i+1])
 
