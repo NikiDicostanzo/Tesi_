@@ -108,7 +108,7 @@ def main():
                         if m['i'] == i:
                              new_text = new_text + ' ' + m['text']
                     
-                    print(new_text)
+                    #print(new_text)
                     dict = {'box': data_image[i]['box'], 'style': False, 'size': False, 'font': False, 'page': int(data_image[i]['page']), 'text': new_text, 'type': data_image[i]['class']}
                     new_data.append(dict)
             new_text_arr = []
@@ -116,10 +116,11 @@ def main():
     
   #  print(new_data)
     path_imm= 'HRDS/images/ACL_2020.acl-main.99/ACL_2020.acl-main.99_'
-    print(image.size)
+   # print(image.size)
 
     for i in range(len(new_data)-1):
-        draw.rectangle(new_data[i]['box'], outline='black' )
+        color = get_color(new_data[i]['type'])
+        draw.rectangle(new_data[i]['box'], outline=color )
         if new_data[i]['page'] != new_data[i+1]['page']:
             image.save(path_save + '_'+ str(new_data[i]['page']) +'.jpg')
             path_image = path_imm + str(new_data[i+1]['page']) +'.jpg'#2022.naacl-industry.16_5.jpg'

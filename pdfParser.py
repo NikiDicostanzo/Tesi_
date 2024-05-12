@@ -82,9 +82,9 @@ def combine_bb(bb, f_style, f_size, font, text, k):
         if i < len(bb)-1 and \
             ((check_overlap(bb[i+1], bb[i])>0.01 and \
               (bb[i][2]-bb[i][0]<10 or bb[i+1][2]-bb[i+1][0]<10)) \
-                or((abs(bb[i+1][1] - bb[i][1]) <= 10 \
+                or((abs(bb[i+1][1] - bb[i][1]) <= 5 \
                                 or abs(bb[i+1][3] - bb[i][3]) <=10)
-            and ((abs(bb[i+1][0] - bb[i][2]) <= 3) \
+            and ((abs(bb[i+1][0] - bb[i][2]) <= 10) \
                  or (abs(bb[i+1][0] - bb[i][2]) <= 15 and check_style(bb, f_style, i, i+1))))):#\
                  #   or (abs(bb[i+1][0] - bb[i][2]) <= 5 and f_style[i] == 'bold')):# \
                    
@@ -118,24 +118,21 @@ def combine_bb(bb, f_style, f_size, font, text, k):
                 x0 = min(bb[i][0], bb[i+1][0])
                 x1 = max(bb[i][2], bb[i+1][2])
                 comb = True
-            if 'DOC' in new_text and contiene_simboli_speciali(new_text):
-                print(f_style[i], '|', f_style[i+1] )
-                print(new_text, '|', text[i+1])
 
           #  draw.rectangle(bb_scale([x0, y0, x1, y1], w, h, float(wp), float(hp)), outline = 'cyan') 
             if f_style[i] == 'normal' and f_style[i+1] != 'normal' and get_width(bb[i+1]) < get_width(bb[i]):
                 f_style[i+1] = f_style[i]
                 f_size[i+1] = f_size[i]
-
+            elif f_size[i]> f_size[i+1]:
+                f_style[i+1] = f_style[i]
+                f_size[i+1] = f_size[i]
            # elif f_style[i] != 'bold' and f_style[i+1] == 'bold'
         else:
             if comb:
                 new_bb.append([x0, y0, x1, y1])
                 dict_data = get_dict([x0, y0, x1, y1], f_style[i], f_size[i], font[i], k, new_text, 'text')
                 comb = False
-                if 'DOC' in new_text:
-                    print('save',f_style[i], '|', f_style[i+1] )
-                    print(new_text, '|', text[i+1])
+                
                         
             else:
                 dict_data = get_dict(bb[i], f_style[i], f_size[i], font[i], k, text[i], 'text')
@@ -260,13 +257,13 @@ def check_folder(path):
         os.makedirs(path) 
   
 def get_color(type):
-    if type == 'img':
+    if type == 'fig':
         color = 'magenta'
     elif type == 'tab':
         color = 'yellow'
-    elif type == 'linee':
+    elif type == 'equ':
         color = 'cyan'
-    elif type == 'draw':
+    elif type == 'alg':
         color = 'green'
     else:
         color = 'black'
