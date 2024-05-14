@@ -90,10 +90,24 @@ def draw_all(path, bb, lab, page, name_im, pdf_path):
 def is_number(input_str):
     return input_str.isdigit()
 
+def is_caption(bb, text, i, is_cap):
+    if (text[i].split(' ')[0] == 'Figure' or text[i].split(' ')[0] == 'Table')\
+          and i >0 and bb[i][1]-bb[i-1][3]<-200: #l'immagine o tabella non stanno accanto
+        is_cap = True
+    elif is_cap:
+        j = 0
+        print(bb[i-j][1] - bb[i-j- 1][3])
+        while i-j>0 and bb[i-j][1] - bb[i-j- 1][3]> 2:
+            if text[j].split(' ')[0] == 'Figure':
+                is_cap =  True
+            else:
+                is_cap = False
+            j = j + 1
+    return is_cap
 
 lab  = ['title', 'author', 'sec', 'meta', 'para', 'fnote', 'page', 'other']
 def main(pdf_path, path ,save_path):
-
+    is_cap = False
     json_file = 'yolo_hrds_4_gt_test/json/ACL_2020.acl-main.99.json'#'dataset_parse/json/2022.naacl-main.92.json'
     name_im = 'ACL_2020.acl-main.99'#.json#'2022.naacl-main.92'
     with open(json_file) as f:
@@ -119,18 +133,22 @@ def main(pdf_path, path ,save_path):
                             labels.append(1) #  Sec
                         else: #para
                             labels.append(4) 
-                        if i >0 and i <len(bb)-1:
-                            print(is_number(text[i][0]),text[i], 'top:', bb[i][1]-bb[i-1][3], ' dx:', bb[i+1][0]-bb[i][2], ' Bot:', bb[i+1][1]-bb[i][3])
-                # elif style[i] == 'italic' and (bb[i][1]<150 or bb[i][3]>700):
+                        # elif style[i] == 'italic' and (bb[i][1]<150 or bb[i][3]>700):
                 #         labels.append(3) # meta o header
                
                 else:
-                    if 9.5<= size[i] <= 12 and 'NimbusRomNo9L' in font[i]: # Para # -> vedi numero prima (?)
+                    is_cap = is_caption(bb, text, i, is_cap)
+                    print(is_cap)
+                    if 9.5<= size[i] <= 12 and 'NimbusRomNo9L' in font[i] and not is_cap: # Para # -> vedi numero prima (?)
                         labels.append(4) #
                     elif size[i]< 9 and bb[i][1] >700:
                         labels.append(5) # note
                     elif is_number(text[i]) and bb[i][1]> 700: # pagina
                         labels.append(6) # Page
+                    elif size[i]<10.3 and is_cap: #other
+                      #  is_cap = is_caption(bb, text, i, is_cap)
+                       # print(is_cap, 'CAP:', text[i])
+                        labels.append(3)
                     else: #other
                         labels.append(8)
             elif type[i] == 'fig':
