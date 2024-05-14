@@ -119,21 +119,24 @@ def combine_bb(bb, f_style, f_size, font, text, k):
                 x1 = max(bb[i][2], bb[i+1][2])
                 comb = True
 
-          #  draw.rectangle(bb_scale([x0, y0, x1, y1], w, h, float(wp), float(hp)), outline = 'cyan') 
-            if f_style[i] == 'normal' and f_style[i+1] != 'normal' and get_width(bb[i+1]) < get_width(bb[i]):
+            bb[i+1] = [x0, y0, x1, y1]
+            text[i+1] = new_text
+
+            if f_style[i] == 'normal' and 'NimbusRomNo9L' in font[i] and f_size[i]> f_size[i+1]-1:
                 f_style[i+1] = f_style[i]
                 f_size[i+1] = f_size[i]
-            elif f_size[i]> f_size[i+1]:
-                f_style[i+1] = f_style[i]
-                f_size[i+1] = f_size[i]
-           # elif f_style[i] != 'bold' and f_style[i+1] == 'bold'
+                font[i+1] = font[i]
+        
+
+            if 'µ' in new_text:
+                print(font[i], font[i+1])
+                print(f_size[i], f_size[i+1])
+                print(text[i], '|', text[i+1], f_style[i], f_style[i+1])
         else:
             if comb:
                 new_bb.append([x0, y0, x1, y1])
                 dict_data = get_dict([x0, y0, x1, y1], f_style[i], f_size[i], font[i], k, new_text, 'text')
-                comb = False
-                
-                        
+                comb = False                        
             else:
                 dict_data = get_dict(bb[i], f_style[i], f_size[i], font[i], k, text[i], 'text')
                 new_bb.append(bb[i])
@@ -320,7 +323,7 @@ def parse_pymupdf(path, name, save):
 
     for k in range(len(doc)):
         page = doc[k]#[0] # Access pages
-        all_infos = page.get_text("dict", sort=True)#, flags=11)
+        all_infos = page.get_text("dict")#, sort=True)#, flags=11)
     
         bb = []
         f_size = []
@@ -348,18 +351,18 @@ def parse_pymupdf(path, name, save):
 
 if __name__ == '__main__':
     
-        dir =  'acl_anthology_pdfs_test/'#'acl_anthology_pdfs/'
-        save_path = 'yolo_hrdhs_672_3_testGT2/'#'dataset_parse/'
-        
-        list_doc = os.listdir(dir) # Ciclare su PDF TODO
-        #pdf = list_doc[2]
-        #pdf ='2022.naacl-demo.0.pdf'
-        print(len(list_doc))
+    dir =  'acl_anthology_pdfs_test/'#'acl_anthology_pdfs/'
+    save_path = 'yolo_hrdhs_672_3_testGT2/'#'dataset_parse/'
+    
+    list_doc = os.listdir(dir) # Ciclare su PDF TODO
+    #pdf = list_doc[2]
+    #pdf ='2022.naacl-demo.0.pdf'
+    print(len(list_doc))
 
-    #for pdf in list_doc:
-        pdf = '2020.acl-main.99.pdf'
-      #  pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
-        #pdf = "2023.acl-long.150.pdf"#'2022.naacl-demo.4.pdf'
+    for pdf in list_doc:
+       # pdf = 'D13-1134.pdf'
+      ##  pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
+    #    pdf = "2020.acl-main.99.pdf"#"2023.acl-long.150.pdf"#'2022.naacl-demo.4.pdf'
         print(pdf)
         pdf_path = dir + pdf
 
