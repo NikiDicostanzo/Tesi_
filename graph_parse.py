@@ -4,6 +4,9 @@ from PIL import Image, ImageDraw
 
 from pdfParser import bb_scale, dimension_pdf
 
+
+lettere_caps = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+
 def get_info_json(data):
     bounding_boxes = [item['box'] for item in data] # salvo tutte le bb delle miei pagine
     page = [item['page'] for item in data]  
@@ -91,7 +94,8 @@ def is_number(input_str):
     return input_str.isdigit()
 
 def is_caption(bb, text, i, is_cap):
-    if (text[i].split(' ')[0] == 'Figure' or text[i].split(' ')[0] == 'Table')\
+    lett = text[i].split(' ')
+    if (lett[0] == 'Figure' or lett[0] == 'Table')\
           and i >0 and bb[i][1]-bb[i-1][3]<-200: #l'immagine o tabella non stanno accanto
         is_cap = True
     elif is_cap:
@@ -108,8 +112,8 @@ def is_caption(bb, text, i, is_cap):
 lab  = ['title', 'author', 'sec', 'meta', 'para', 'fnote', 'page', 'other']
 def main(pdf_path, path ,save_path):
     is_cap = False
-    json_file = 'yolo_hrds_4_gt_test/json/ACL_2020.acl-main.99.json'#'dataset_parse/json/2022.naacl-main.92.json'
-    name_im = 'ACL_2020.acl-main.99'#.json#'2022.naacl-main.92'
+    json_file = 'yolo_hrds_4_gt_test/json/NAACL_2021.naacl-main.381.json' #ACL_2020.acl-main.99.json'#'dataset_parse/json/2022.naacl-main.92.json'
+    name_im = 'NAACL_2021.naacl-main.381'#.json#'ACL_2020.acl-main.99'#.json#'2022.naacl-main.92'
     with open(json_file) as f:
         data = json.load(f)
         bb, page, text, size, type, style, font = get_info_json(data)
@@ -126,10 +130,11 @@ def main(pdf_path, path ,save_path):
                     or (size[i]<10 and bb[i][1]>780):
                         labels.append(2) # meta ? -type diversi
                         print('qui', page[i])
-                elif style[i] == 'bold' and 10<= size[i] <= 12 and 'NimbusRomNo9L' in font[i]: # SEC # -> vedi numero prima (?)
+                elif style[i] == 'bold' and 9.5<= size[i] <= 12 and 'NimbusRomNo9L' in font[i]: # SEC # -> vedi numero prima (?)
                         if is_number(text[i][0]) \
-                            or (text[i] in ['Abstract', 'References', 'Acknowledgments']) \
-                                or (i>0 and labels[-1]==1 and bb[i][0]-bb[i-1][0]>=10):
+                            or (text[i] in ['Abstract', 'References', 'Acknowledgments', 'Appendix']) \
+                                or (i>0 and labels[-1]==1 and bb[i][0]-bb[i-1][0]>=10) \
+                            or (len(text[i])>2 and text[i][0] in lettere_caps and text[i][1] in [' ', '.']):
                             labels.append(1) #  Sec
                         else: #para
                             labels.append(4) 
