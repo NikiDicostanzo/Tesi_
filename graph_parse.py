@@ -93,27 +93,32 @@ def draw_all(path, bb, lab, page, name_im, pdf_path):
 def is_number(input_str):
     return input_str.isdigit()
 
-def is_caption(bb, text, i, is_cap):
+def is_caption(bb, text, i, is_cap, size):
     lett = text[i].split(' ')
     if (lett[0] == 'Figure' or lett[0] == 'Table')\
-          and i >0 and (abs(bb[i][1]-bb[i-1][3])>30): #l'immagine o tabella non stanno accanto
+          and i >0 and (abs(bb[i][1]-bb[i-1][3])>30)\
+            and size[i]<10.5: #l'immagine o tabella non stanno accanto
         is_cap = True
     elif is_cap:
         j = 0
-        while i-j>0 and bb[i-j][1] - bb[i-j- 1][3]> 2:
-            if text[j].split(' ')[0] == 'Figure':
+        while i-j>0 and abs(bb[i-j][1] - bb[i-j- 1][3])> 4:
+            
+            if text[i-j-1].split(' ')[0] == 'Figure':
                 is_cap =  True
             else:
                 is_cap = False
             j = j + 1
+        if abs(bb[i][1] - bb[i - 1][3])> 5:
+            is_cap = False
     return is_cap
 
 lab  = ['title', 'author', 'sec', 'meta', 'para', 'fnote', 'page', 'other']
 def main(pdf_path, path ,save_path):
     is_cap = False
     #NAACL_2021.naacl-main.381.json' #
-    json_file = 'yolo_hrds_4_gt_test/json/ACL_2020.acl-main.99.json'#'dataset_parse/json/2022.naacl-main.92.json'
-    name_im = 'ACL_2020.acl-main.99'#.json#'2022.naacl-main.92'
+    json_file = 'yolo_hrds_4_gt_test/json/EMNLP_D19-1317.json'
+    #ACL_P19-1303.json'#ACL_2020.acl-main.99.json'#'dataset_parse/json/2022.naacl-main.92.json'
+    name_im = 'EMNLP_D19-1317' #'ACL_P19-1303'#'ACL_2020.acl-main.99'#.json#'2022.naacl-main.92'
     with open(json_file) as f:
         data = json.load(f)
         bb, page, text, size, type, style, font = get_info_json(data)
@@ -129,7 +134,6 @@ def main(pdf_path, path ,save_path):
                 elif (page[i] == 0 and bb[i][1]<200 ) \
                     or (size[i]<10 and bb[i][1]>780):
                         labels.append(2) # meta ? -type diversi
-                        print('qui', page[i])
                 elif style[i] == 'bold' and 9.5<= size[i] <= 12 and 'NimbusRomNo9L' in font[i]: # SEC # -> vedi numero prima (?)
                         if is_number(text[i][0]) \
                             or (text[i] in ['Abstract', 'References', 'Acknowledgments', 'Appendix']) \
@@ -142,9 +146,8 @@ def main(pdf_path, path ,save_path):
                 #         labels.append(3) # meta o header
                
                 else:
-                    is_cap = is_caption(bb, text, i, is_cap)
-                    if bb[i][1]> 700:
-                        print(text[i], is_number(text[i]))
+                    is_cap = is_caption(bb, text, i, is_cap, size)
+                                      
                     if is_number(text[i]) and bb[i][1]> 700: # pagina
                         labels.append(6) # Page
                     elif 9.5<= size[i] <= 12 and 'NimbusRomNo9L' in font[i] and not is_cap: # Para # -> vedi numero prima (?)
@@ -175,7 +178,7 @@ def main(pdf_path, path ,save_path):
 
 if __name__ == '__main__':
     dir = 'acl_anthology_pdfs/'
-    pdf = '2022.naacl-main.92.pdf'#2023.acl-long.150.pdf'#
+    pdf = '2022.naacl-main.92.pdf'#2023.acl-long.150.pdf'# #solo per ridimensionare imm.
     save_path = 'plot_bb_parse/'
 
     if not os.path.exists(save_path):
