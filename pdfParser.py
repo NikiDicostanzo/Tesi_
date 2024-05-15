@@ -80,12 +80,13 @@ def combine_bb(bb, f_style, f_size, font, text, k):
        # x simil            
             # and '•' not in new_text
         if i < len(bb)-1 and \
-            ((check_overlap(bb[i+1], bb[i])>0.01 and \
-              (bb[i][2]-bb[i][0]<10 or bb[i+1][2]-bb[i+1][0]<10)) \
+            ((check_overlap(bb[i+1], bb[i])>0.3 and \
+              (bb[i][2]-bb[i][0]<10 or bb[i+1][2]-bb[i+1][0]<10 \
+               or (abs(bb[i+1][1]-bb[i+1][1])<3  and abs(bb[i+1][3]-bb[i+1][3])<3))) \
                 or((abs(bb[i+1][1] - bb[i][1]) <= 5 \
                                 or abs(bb[i+1][3] - bb[i][3]) <=10)
             and ((abs(bb[i+1][0] - bb[i][2]) <= 10) \
-                 or (abs(bb[i+1][0] - bb[i][2]) <= 15 and check_style(bb, f_style, i, i+1))))):#\
+                 or (abs(bb[i+1][0] - bb[i][2]) <= 20 and check_style(bb, f_style, i, i+1))))):#\
                  #   or (abs(bb[i+1][0] - bb[i][2]) <= 5 and f_style[i] == 'bold')):# \
                    
             if comb: # ha fatto gia dei merge
@@ -126,12 +127,9 @@ def combine_bb(bb, f_style, f_size, font, text, k):
                 f_style[i+1] = f_style[i]
                 f_size[i+1] = f_size[i]
                 font[i+1] = font[i]
-        
-
-            if 'µ' in new_text:
-                print(font[i], font[i+1])
-                print(f_size[i], f_size[i+1])
-                print(text[i], '|', text[i+1], f_style[i], f_style[i+1])
+    
+           # if 'µ' in new_text:
+               
         else:
             if comb:
                 new_bb.append([x0, y0, x1, y1])
