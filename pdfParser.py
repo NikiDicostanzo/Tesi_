@@ -80,9 +80,9 @@ def combine_bb(bb, f_style, f_size, font, text, k):
        # x simil            
             # and '•' not in new_text
         if i < len(bb)-1 and \
-            ((check_overlap(bb[i+1], bb[i])>0.3 and \
+            ((check_overlap(bb[i+1], bb[i])>0.03 and \
               (bb[i][2]-bb[i][0]<10 or bb[i+1][2]-bb[i+1][0]<10 \
-               or (abs(bb[i+1][1]-bb[i+1][1])<3  and abs(bb[i+1][3]-bb[i+1][3])<3))) \
+               or (abs(bb[i+1][1]-bb[i][1])<3  and abs(bb[i+1][3]-bb[i][3])<3))) \
                 or((abs(bb[i+1][1] - bb[i][1]) <= 5 \
                                 or abs(bb[i+1][3] - bb[i][3]) <=10)
             and ((abs(bb[i+1][0] - bb[i][2]) <= 10) \
@@ -123,12 +123,15 @@ def combine_bb(bb, f_style, f_size, font, text, k):
             bb[i+1] = [x0, y0, x1, y1]
             text[i+1] = new_text
 
-            if f_style[i] == 'normal' and 'NimbusRomNo9L' in font[i] and f_size[i]> f_size[i+1]-1:
+            if (f_style[i] in ['normal','italic'] \
+                and ('NimbusRomNo9L' in font[i] or 'Times' in font[i] \
+                    or ('CMMI10' in font[i]  and 'NimbusRomNo9L' not in font[i+1] and 'Times' not in font[i+1]))
+                    and f_size[i]> f_size[i+1]-1.5) \
+                        or ():
                 f_style[i+1] = f_style[i]
                 f_size[i+1] = f_size[i]
                 font[i+1] = font[i]
     
-           # if 'µ' in new_text:
                
         else:
             if comb:
