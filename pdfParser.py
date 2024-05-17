@@ -6,6 +6,28 @@ import fitz
 import json
 from overlap_box_Yolo import check_overlap
 import re
+from collections import Counter
+
+def split_string(stringa):
+    # Sostituisci ogni carattere maiuscolo con uno spazio
+    stringa_con_spazi = ''.join(' ' + c if c.isupper() else c for c in stringa)
+    
+    # Dividi la stringa in base allo spazio
+    parole = stringa_con_spazi.split()
+    
+    # Rimuovi gli spazi aggiuntivi
+    parole = [parola.strip() for parola in parole]
+    
+    return parole
+
+def get_font_comm(font):
+    fc1 = (Counter(font).most_common()[0][0].split('-')[0])
+    fc2 = split_string(fc1)
+    if len(fc2[0]) == 1:
+        font_comm = fc2[0] + fc2[1]
+    else:
+        font_comm = fc2[0]
+    return font_comm
 
 # Deprecated (?) -> YOLO
 def get_caption_tab(data, image_data, table_data):
@@ -48,15 +70,22 @@ def get_caption_tab(data, image_data, table_data):
     new_data = new_data + cap_im_tab
     return new_data
 
-def check_style(bb, style, ind1, ind2):
+def check_style(bb, style, ind1, ind2, text, font, size):
+    
     if style[ind1] in ['normal','italic'] and style[ind2] in ['normal','italic']:
         return True
     elif style[ind1] == style[ind2]:
          return True
-    elif style[ind1] != 'bold' and style[ind2] == 'bold' and get_width(bb[ind1])<get_width(bb[ind2]):
+    elif style[ind1] != 'bold' and style[ind2] == 'bold':# and get_width(bb[ind1])<get_width(bb[ind2]):
+        #print(text[ind1], '|', text[ind2], 'Y', bb[ind2][0]-bb[ind1][2])
         return True
-    elif style[ind2] != 'bold' and style[ind1] == 'bold' and get_width(bb[ind2])<get_width(bb[ind1]):
+    elif style[ind2] != 'bold' and style[ind1] == 'bold' \
+        and len(text[ind2].replace(' ', ''))>0 \
+        and not text[ind2].replace(' ', '')[0].isupper() and not text[ind2].replace(' ', '')[0] == '.':# and get_width(bb[ind2])<get_width(bb[ind1]):# and :
+        # if text[ind2].replace(' ', '')[0].isupper():
+        
         return True
+        
     return False
 
 def get_width(box):
@@ -65,10 +94,21 @@ def get_width(box):
 def get_higth(box):
     return abs(box[3]-box[1])
 
+def get_font_word(text, font):
+    new_font = []
+    for i in range(len(text)):
+        t1 = text[i].split(' ')
+        for k in t1:
+            new_font.append(font[i])
+    return new_font
+
 def combine_bb(bb, f_style, f_size, font, text, k): 
     comb = False
     new_bb = []
     data = []
+
+    font_split = get_font_word(text, font)
+    comm_f = get_font_comm(font_split)
     # image = Image.open(name)
     # draw = ImageDraw.Draw(image)
     # w , h = image.size
@@ -80,15 +120,15 @@ def combine_bb(bb, f_style, f_size, font, text, k):
        # x simil            
             # and '•' not in new_text
         if i < len(bb)-1 and \
-            ((check_overlap(bb[i+1], bb[i])>0.03 and \
+            ((check_overlap(bb[i+1], bb[i])>0.005 and \
               (bb[i][2]-bb[i][0]<10 or bb[i+1][2]-bb[i+1][0]<10 \
                or (abs(bb[i+1][1]-bb[i][1])<3  and abs(bb[i+1][3]-bb[i][3])<3))) \
-                or((abs(bb[i+1][1] - bb[i][1]) <= 5 \
-                                or abs(bb[i+1][3] - bb[i][3]) <=10)
-            and ((abs(bb[i+1][0] - bb[i][2]) <= 10) \
-                 or (abs(bb[i+1][0] - bb[i][2]) <= 20 and check_style(bb, f_style, i, i+1))))):#\
+                or((abs(bb[i+1][1] - bb[i][1]) <= 5 or abs(bb[i+1][3] - bb[i][3]) <=10)
+            and ((abs(bb[i+1][0] - bb[i][2]) <= 20 and check_style(bb, f_style, i, i+1, text, font, f_size)))\
+                or ((abs(bb[i+1][0] - bb[i][2])<=4 and (bb[i][2]-bb[i][0]<10 or bb[i+1][2]-bb[i+1][0]<10 ))))):#\
                  #   or (abs(bb[i+1][0] - bb[i][2]) <= 5 and f_style[i] == 'bold')):# \
-                   
+                   #(abs(bb[i+1][0] - bb[i][2]) <= 10) or\
+           
             if comb: # ha fatto gia dei merge
                 
                 if bb[i+1][2]-bb[i+1][0]<11 and contiene_simboli_speciali(text[i+1]):
@@ -120,19 +160,19 @@ def combine_bb(bb, f_style, f_size, font, text, k):
                 x1 = max(bb[i][2], bb[i+1][2])
                 comb = True
 
-            bb[i+1] = [x0, y0, x1, y1]
-            text[i+1] = new_text
-
+            
+            #or ('CMMI10' in font[i]  and comm_f not in font[i+1]))
             if (f_style[i] in ['normal','italic'] \
-                and ('NimbusRomNo9L' in font[i] or 'Times' in font[i] \
-                    or ('CMMI10' in font[i]  and 'NimbusRomNo9L' not in font[i+1] and 'Times' not in font[i+1]))
+                and (comm_f in font[i] )\
                     and f_size[i]> f_size[i+1]-1.5) \
-                        or ():
+                        or (f_style[i] == f_style[i+1] and f_size[i+1] < f_size[i]-0.5) \
+                        or (f_style[i] != f_style[i+1] and bb[i+1][2]-bb[i+1][0]<5):
                 f_style[i+1] = f_style[i]
                 f_size[i+1] = f_size[i]
-                font[i+1] = font[i]
-    
-               
+                font[i+1] = font[i]   
+            bb[i+1] = [x0, y0, x1, y1]
+            text[i+1] = new_text
+          
         else:
             if comb:
                 new_bb.append([x0, y0, x1, y1])
@@ -361,7 +401,7 @@ if __name__ == '__main__':
     print(len(list_doc))
 
     for pdf in list_doc:
-       # pdf = 'D13-1134.pdf'
+      #  pdf = '2020.acl-main.99.pdf'#2021.naacl-main.67.pdf'#'P11-1008.pdf' #D13-1134.pdf'
       ##  pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
     #    pdf = "2020.acl-main.99.pdf"#"2023.acl-long.150.pdf"#'2022.naacl-demo.4.pdf'
         print(pdf)

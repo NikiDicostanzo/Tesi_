@@ -3,7 +3,7 @@ import json
 from PIL import Image, ImageDraw
 
 from pdfParser import bb_scale, dimension_pdf
-
+from collections import Counter
 
 lettere_caps = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 lab  = ['title', 'sec', 'meta', 'caption' , 'para', 'note', 'page','fig', 'equ', 'tab', 'alg', 'other']
@@ -33,6 +33,9 @@ def get_graph():
 #    'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili'}]
 
 #['title','sec', 'autho,', 'meta', 'para', 'fnote', 'page', 'other']
+
+
+
 def get_color(lab):
     lab = int(lab)
     if lab == 0:
@@ -61,6 +64,17 @@ def get_color(lab):
 
     return color
 
+def split_string(stringa):
+    # Sostituisci ogni carattere maiuscolo con uno spazio
+    stringa_con_spazi = ''.join(' ' + c if c.isupper() else c for c in stringa)
+    
+    # Dividi la stringa in base allo spazio
+    parole = stringa_con_spazi.split()
+    
+    # Rimuovi gli spazi aggiuntivi
+    parole = [parola.strip() for parola in parole]
+    
+    return parole
 
 def draw_all(path, bb, lab, page, name_im, wp, hp):
     #name = path + name_im + '/' + name_im + '_0.png' # iniz.
@@ -85,6 +99,10 @@ def draw_all(path, bb, lab, page, name_im, wp, hp):
             name = path  + name_im + '_' + str(page[i]) + '.png'
             image = Image.open(name)
             draw = ImageDraw.Draw(image)
+        if i== len(bb)-1:
+            path_save = save_path + name_im + '_' +str(page[i]) + '.png'
+            image.save(path_save)
+
         #print(lab[i])
         color = get_color(lab[i])
         draw.rectangle(bb_scale(bb[i], w, h, float(wp), float(hp)), outline = color, width = 2) 
@@ -94,23 +112,31 @@ def draw_all(path, bb, lab, page, name_im, wp, hp):
 def is_number(input_str):
     return input_str.isdigit()
 
-def is_caption(bb, text, i, is_cap, size):
+def is_caption(bb, text, i, is_cap, size, labels, page):
     lett = text[i].split(' ')
+    t = text[i].replace(' ', '')
     if (lett[0] == 'Figure' or lett[0] == 'Table')\
-          and i >0 and (abs(bb[i][1]-bb[i-1][3])>30)\
-            and size[i]<10.5: #l'immagine o tabella non stanno accanto
+          and i >0 and ((page[i] == page[i-1] and abs(bb[i][1]-bb[i-1][3])>20 and (':' in t or len(t)<9)) or \
+              (len(t)>9 and ':' in t[6:9]) or (len(t)<9 and ':' in t)) \
+            and size[i]<11.01: #l'immagine o tabella non stanno accanto           
         is_cap = True
-    elif is_cap:
-        j = 0
-        while i-j>0 and abs(bb[i-j][1] - bb[i-j- 1][3])> 4:
+    elif labels[-1]==3 and ((abs(bb[i][0] - bb[i - 1][2])< 12 and abs(bb[i][1] - bb[i - 1][1])< 3)\
+         or (abs(bb[i][1] - bb[i-1][3])< 5)):
+        is_cap = True
+    else:
+        is_cap = False
+    # elif is_cap:
+    #     j = 0
+        
+    #     while i-j>0 and (abs(bb[i-j][1] - bb[i-j- 1][3])> 4) :
             
-            if text[i-j-1].split(' ')[0] == 'Figure':
-                is_cap =  True
-            else:
-                is_cap = False
-            j = j + 1
-        if abs(bb[i][1] - bb[i-1][3])> 5 or  size[i]>10.4:
-            is_cap = False
+    #         if text[i-j-1].split(' ')[0] == 'Figure':
+    #             is_cap =  True
+    #         else:
+    #             is_cap = False
+    #         j = j + 1
+    #     if abs(bb[i][1] - bb[i-1][3])> 5 or  size[i]>10.4:
+    #         is_cap = False
     return is_cap
 
 def is_fnote(bb, text, i, is_note, size):
@@ -131,22 +157,31 @@ def is_fnote(bb, text, i, is_note, size):
             is_note = False
     return is_note
 
+def get_font_word(text, font):
+    new_font = []
+    for i in range(len(text)):
+        t1 = text[i].split(' ')
+        for k in t1:
+            new_font.append(font[i])
+    return new_font
+
 def main(path ,save_path):
     folder = 'yolo_hrds_4_gt_test/'
 
     folder_json = folder + 'json/'
     list_json = os.listdir(folder_json)
     for j in list_json:
-         #760 : 842 = x : 792
+         #770 : 842 = x : 792
         p1 = '_'.join(j.split('_')[1:])
         pdf = p1.replace('json', 'pdf')
         pdf_path = 'acl_anthology_pdfs_test/' + pdf 
         wp, hp = dimension_pdf(pdf_path)
-        lim_note = (760*hp)/842
+        lim_note = (770*hp)/842
 
         is_cap = False
         start_text = False
         print(j)
+       
         #NAACL_2021.naacl-main.381.json' #
         json_file = folder_json + j
         #'yolo_hrds_4_gt_test/json/EMNLP_D19-1317.json'
@@ -158,47 +193,53 @@ def main(path ,save_path):
         with open(json_file) as f:
             data = json.load(f)
             bb, page, text, size, type, style, font = get_info_json(data)
+            font_split = get_font_word(text, font)
+            font_comm = get_font_comm(font_split)
+            #print(font_comm, '|', Counter(font))
+            
             labels = []
             edge = []
-            print(text[0])
             for i in range(len(bb)): # Ogni bb è un mio nodo
                 
                 if type[i] == 'text':
+                    if len(labels)>0:
+                        is_cap = is_caption(bb, text, i, is_cap, size, labels, page)
+                    #if font[i][:2] == 'CM':#j == 'EMNLP_D14-1063.json'font[i]:
+                    #    print(font[i], text[i])
                     #(page[i] == 0 and bb[i][1]<300 and 'NimbusRomNo9L' not in font[i]) \
                     if text[i] == 'Abstract' and style[i] == 'bold':
                         start_text = True
-                    if style[i] == 'bold' and size[i] >= 14 and page[i] == 0: # é titolo/ sec .. 
+                    if style[i] == 'bold' and size[i] >= 13 and page[i] == 0 and bb[i][1]<=100: # é titolo/ sec .. 
                     # y0 in alto 
-                            labels.append(0) #  Title 
+                            labels.append(0) # title 
                     elif (page[i] == 0 and bb[i][1]<250 and not start_text) \
                         or (size[i]<10 and bb[i][1]>lim_note):
                             labels.append(2) # meta ? -type diversi
                     elif style[i] == 'bold' and 9.5<= size[i] <= 12 \
-                        and ('NimbusRomNo9L' in font[i] or 'Times' in font[i]): # SEC # -> vedi numero prima (?)
-                            # if is_number(text[i][0]) \
-                            #     or (text[i] in ['Abstract', 'References', 'Acknowledgments','Acknowledgment', 'Appendix']) \
-                            #         or (i>0 and labels[-1]==1 and bb[i][0]-bb[i-1][0]>=10) \
-                            #     or (len(text[i])>2 and text[i][0] in lettere_caps and text[i][1] in [' ', '.']):
-                            if text[i][0] != '•' :      
+                        and (font_comm in font[i]): # SEC # -> vedi numero prima (?)
+                            t1 = text[i].replace(' ', '')
+                            if text[i][0] != '•' and (t1[0] in lettere_caps or is_number(t1[0])):      
                                 labels.append(1)    #  Sec
                                     #break
+                            elif is_cap:
+                                labels.append(3)
                             else:                   #para
                                 labels.append(4)
-                    else:
-                        is_cap = is_caption(bb, text, i, is_cap, size)
-                      #  is_note = is_fnote(bb, text, i, is_note, size)
-                        if is_number(text[i]) and bb[i][1]> lim_note: # pagina
-                            labels.append(6)        # Page
-                        elif 9.1<= size[i] <= 12 and \
-                            ('NimbusRomNo9L' in font[i] or 'Times' in font[i] or 'NimbusMonL' in font[i]) and not is_cap:# and not is_note: # Para # -> vedi numero prima (?)
+                    elif is_number(text[i]) and bb[i][1]>= lim_note: # pagina
+                            labels.append(6)        # page
+                    elif font_comm in font[i] :
+                        if 9.1<= size[i] <= 12 and \
+                            not is_cap:# and not is_note: # Para # -> vedi numero prima (?)
                             labels.append(4) #
-                        elif lim_note > bb[i][1] >500 and not is_cap and size[i]<9.1 :#and ('NimbusRomNo9L' in font[i] or 'Times' in font[i]):# and is_note:
+                        elif lim_note > bb[i][1] >500 and not is_cap and 7<=size[i]<9.1 :#and ('NimbusRomNo9L' in font[i] or 'Times' in font[i]):# and is_note:
                             labels.append(5)        # note
-
-                        elif size[i]<10.3 and is_cap: #caption
+                            # is_cap -> se ho figure o table, poi controllo labels se è cap
+                        elif size[i]<11.1 and is_cap: #caption #abs(bb[i][0] - bb[i - 1][0])<3) non va bene xk precedente è spostato a dx
                             labels.append(3)
-
                         else: #other
+                            labels.append(10)
+
+                    else: #other
                             labels.append(10)
                 elif type[i] == 'fig':
                     #other
@@ -212,9 +253,10 @@ def main(path ,save_path):
                     labels.append(9)
                 else:
                     labels.append(10)
+
            # print(len(bb), len(labels))
             draw_all(path, bb, labels, page, name_im, wp, hp)
-            print(len(new_data))
+            #print(len(new_data))
             for i in range(len(bb)):
                 dict = {'box': bb[i], 
                         'style': style[i], 
@@ -231,6 +273,15 @@ def main(path ,save_path):
                 os.makedirs(folder +'check_json_label/')
             with open(save_json, 'w') as f:
                 json.dump(new_data, f, indent=4)
+
+def get_font_comm(font):
+    fc1 = (Counter(font).most_common()[0][0].split('-')[0])
+    fc2 = split_string(fc1)
+    if len(fc2[0]) == 1:
+        font_comm = fc2[0] + fc2[1]
+    else:
+        font_comm = fc2[0]
+    return font_comm
 
                 
 if __name__ == '__main__':

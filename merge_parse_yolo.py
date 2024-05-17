@@ -2,6 +2,7 @@ import os
 import json
 from PIL import Image, ImageDraw
 
+from graph_parse import get_font_comm
 from pdfParser import bb_scale, dimension_pdf, get_color, get_dict
 from overlap_box_Yolo import check_overlap
 
@@ -32,6 +33,9 @@ from overlap_box_Yolo import check_overlap
     }
 """
 
+def is_inside(boxIn, boxEx):
+    return boxEx[0]<= boxIn[0] and boxEx[1]<= boxIn[1] and boxEx[2]>= boxIn[2] and boxEx[3]>= boxIn[3]
+
 def check_box_inside(box_ex, box2_in):
       return box_ex[0] <= box2_in[0] and box_ex[1] <= box2_in[1] \
         and box_ex[2] >= box2_in[2] and box_ex[3] >= box2_in[1]
@@ -47,6 +51,7 @@ def main():
     save_path ='yolo_hrds_4_gt_test/json/'
     list_json = os.listdir(path_json_imm)
     for j in list_json:
+        print(j)
         json_imm = path_json_imm + j
 
         json_name = '_'.join(j.split('_')[1:])
@@ -61,6 +66,8 @@ def main():
         with open(json_imm, errors="ignore") as json_file:
                 data_yolo = json.load(json_file)
 
+        f = [item['font'] for item in data_text]
+        comm_font = get_font_comm(f)
         page = 0
         path_image = 'HRDS/images/'+ all_name +'/' + all_name + '_' + str(page) +'.jpg'#2022.naacl-industry.16_5.jpg'
         image = Image.open(path_image)
@@ -76,7 +83,7 @@ def main():
         if not os.path.exists(new_path):
             os.makedirs(new_path)
         
-        new_data = get_dict_merge(data_text, data_yolo)
+        new_data = get_dict_merge(data_text, data_yolo, comm_font)
 
         save_json = save_path + j 
         with open(save_json, 'w') as f:
@@ -98,7 +105,7 @@ def main():
     #             w, h = image.size
     #             draw = ImageDraw.Draw(image)
 
-def get_dict_merge(data_text, data_image):
+def get_dict_merge(data_text, data_image, comm_font):
     t = 0
     new_data = []   
     new_text_arr = []
@@ -108,12 +115,16 @@ def get_dict_merge(data_text, data_image):
         p =int(data_text[t]['page'])
         for i in range(len(data_image)):
             if (p) == int(data_image[i]['page']) \
-                and check_overlap(data_text[t]['box'],data_image[i]['box'])>0:
-                check_iou = True
-                new_text_arr.append({'i': i, 'text':data_text[t]['text']})
-               # print(new_text_arr[-1])
-               # new_text = new_text + data_text[t]['text']
-                break #
+                and (check_overlap(data_text[t]['box'],data_image[i]['box'])>0):# and comm_font not in data_text[t]['font'])\
+                     #or  is_inside(data_text[t]['box'],data_image[i]['box']):
+                t1 = data_text[t]['text']
+                # nel caso in cui la box della tab o imm è piu grande e prende la caption 
+                if (('Table' in t1 or 'Figure' in t1) and (':' in t1 or len(t1.replace(' ', ''))<9)) and comm_font in data_text[t]['font']:
+                     break
+                else:
+                    check_iou = True
+                    new_text_arr.append({'i': i, 'text':data_text[t]['text']})
+                    break 
              
         if check_iou == False: # Non inserisco se ha trovato overlapp
             new_data.append(data_text[t])
