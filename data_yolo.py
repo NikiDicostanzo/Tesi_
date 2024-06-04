@@ -65,7 +65,7 @@ def get_data(path_json, path_image, folder, pagine, name,num,data_type):
         create_folder(save_im_path)
         count_page = 0
         write = []
-     
+        save_lab_array = []
         for index in range(len(data)):
             #se cambia pagina salvo
             if index > 0 and data[index]['page'] != data[index-1]['page']: 
@@ -104,15 +104,16 @@ def get_data(path_json, path_image, folder, pagine, name,num,data_type):
                 
                 save_im = save_im_path + name_image
                 image.save(save_im) 
-            if data[index]['class'] in ['tab', 'fig', 'alg', 'equ']:
-                class_lab = set_class_3(data, index)#set_class_all(data, index)
-                #set_class_nine(data, index)
-                #class_lab = set_class_four(data, index)
-                txt_data = create_ann(data[index]['box'], width, height)
-            
-                tmp = class_lab + ' ' + txt_data  
-                #if class_lab== '0':
-                write.append(tmp)
+            #if data[index]['class'] in ['tab', 'fig', 'alg', 'equ']:
+            class_lab = set_class_nine(data, index, save_lab_array)#set_class_all(data, index)
+            save_lab_array.append(class_lab) # mi serve per opara
+            #set_class_nine(data, index)
+            #class_lab = set_class_four(data, index)
+            txt_data = create_ann(data[index]['box'], width, height)
+        
+            tmp = class_lab + ' ' + txt_data  
+            #if class_lab== '0':
+            write.append(tmp)
         return pagine,num
 
 
@@ -186,30 +187,41 @@ def set_class_3(data, index):
         class_lab = '3'
     return class_lab
 
-def set_class_nine(data, index):
+
+'''
+    {'author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
+    'fig', 'mail', 'secx', 'title', 
+    'sec1', 'figcap', 'para', 'sec3', 'opara', 'fnote', 'affili'}
+'''
+#class_names = ['title', 'sec', 'meta', 'caption' , 'para', 'note', 'equ', 'tab', 'alg', 'fig', 'page']
+def set_class_nine(data, index, lab):
     name_class = data[index]['class'] 
-    if name_class == 'sec1':
+
+    if name_class == 'title':
         class_lab = '0'
-    elif name_class == 'sec2':
+    elif name_class in ['sec1','sec2', 'sec3', 'secx'] :
         class_lab = '1'
-    elif name_class == 'sec3':
+    elif name_class in ['tabcap', 'figcap']:
         class_lab = '2'
-    elif name_class == 'fstline':
-        class_lab = '3'
-    elif name_class == 'para':
+    elif name_class in ['para', 'fstline']:
         class_lab = '4'
-    elif name_class == 'equ':
+    elif name_class == 'fnote':
         class_lab = '5'
-    elif name_class == 'tab':
+    elif name_class == 'equ':
         class_lab = '6'
-    elif name_class == 'fig':
+    elif name_class == 'tab':
         class_lab = '7'
-    elif name_class == 'title':
+    elif name_class == 'alg':
         class_lab = '8'
-    elif data[index]['is_meta'] == True:
-        class_lab = '8' 
-    else:
+    elif name_class == 'fig':
         class_lab = '9'
+    elif data[index]['is_meta'] == True:
+        class_lab = '3' 
+    elif len(lab) > 1 and name_class == 'opara':
+        class_lab = lab[-1]
+    else:
+        class_lab = '10'
+        print(name_class)
     return class_lab
 
 # class_all = ['author', 'alg', 'sec2', 'equ', 'fstline', 'tabcap', 'foot', 'tab', 
@@ -244,7 +256,7 @@ def all_json(path_json, path_images, name_dataset, data_type):
             else:
                 image = path_image #TODO + name per HRDS !!!!!!!!! per HRDH togli name
 
-            folder = "../dataset_hrds_4class/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+            folder = "../dataset_hrds_10class_last/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
             create_folder(folder)
             pagine,num = get_data(json, image, folder, pagine, name, num, data_type)
             

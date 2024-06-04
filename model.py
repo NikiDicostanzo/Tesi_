@@ -6,6 +6,8 @@ import numpy as np
 import dgl
 import dgl.function as fn
 
+    
+#### NODE 
 # Contruct a two-layer GNN model
 class SAGE(nn.Module):
     def __init__(self, in_feats, hid_feats, out_feats):
@@ -27,6 +29,8 @@ class SAGE(nn.Module):
         h = F.relu(h)
         h = self.conv3(graph, h)
         return h
+
+#### +++ EDGE
 
 class MLPPredictor(nn.Module):
     def __init__(self, in_features, out_classes):
@@ -57,30 +61,3 @@ class Model(nn.Module):
     def forward(self, g, x):
         h = self.sage(g, x)
         return self.pred(g, h)
-
-""" 
-class EdgeClassifier(nn.Module):
-
-    def __init__(self, edge_classes, m_layers, dropout, in_chunks, out_chunks, hidden_dim, device, doProject=True):
-        super().__init__()
-
-        # Project inputs into higher space
-        self.projector = InputProjector(in_chunks, out_chunks, device, doProject)
-
-        # Perform message passing
-        m_hidden = self.projector.get_out_lenght()
-        self.message_passing = nn.ModuleList()
-        self.m_layers = m_layers
-        for l in range(m_layers):
-            self.message_passing.append(GcnSAGELayer(m_hidden, m_hidden, F.relu, 0.))
-
-        # Define edge predictori layer
-        self.edge_pred = MLPPredictor(m_hidden, hidden_dim, edge_classes, dropout)  
-
-    def forward(self, g, h):
-        h = self.projector(h)
-        for l in range(self.m_layers):
-            h = self.message_passing[l](g, h)
-        
-        e = self.edge_pred(g, h)
-        return e """

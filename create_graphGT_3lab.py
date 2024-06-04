@@ -10,10 +10,8 @@ import dgl.data
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
-import numpy as np
-
-
 from transformers import BertModel, BertTokenizer
+
 device = th.device("cuda" if th.cuda.is_available() else "cpu")
 # Caricamento del modello e del tokenizer
 model = BertModel.from_pretrained('bert-base-uncased').to(device)
@@ -122,34 +120,164 @@ def title_condition(labels, s, t):
 
 #         relative_coordinates.append(relative_diffs)
 #     return np.array(relative_coordinates)
-
-def calculate_relative_coordinates(bb, k):
+def calculate_relative_coordinates_y(bb, k, page):
     relative_coordinates = []
+    relative_page = []
     for i in range(len(bb)):
-        current_bb = np.array(bb[i])
+        relative_page_prev = []
+
+        relative_page_next = []
+
+        next_bbs = []
+        prev_bbs = []
+     ##   current_bb = np.array(bb[i])
+        current_bb = bb[i][1]
         # Calcola i k vicini precedenti
+        
         if i - k >= 0:
-            prev_bbs = np.array(bb[i-k:i])
+            n = i - k
+            while n < i:
+                prev_bbs.append(bb[n][1])
+                n = n + 1 
         else:
             prev_bbs = np.zeros(k) # o qualsiasi valore di default
+            relative_page_prev = np.zeros(k)
         # Calcola i k vicini successivi
         if i + k < len(bb):
-            next_bbs = np.array(bb[i+1:i+k+1])
+           # next_bbs = np.array(bb[i+1:i+k+1])
+            n = i + 1
+            while n < i+k+1:
+                next_bbs.append(bb[n][1])
+                n = n + 1 
+            page_next = np.array(page[i+1:i+k+1])
         else:
             next_bbs = np.zeros(k) # o qualsiasi valore di default
-        
+            relative_page_next = np.zeros(k)
         # Calcola la differenza relativa tra la bounding box corrente e quelle dei k vicini precedenti e successivi
         relative_diffs_prev = [abs(prev_bb - current_bb) for prev_bb in prev_bbs]
         relative_diffs_next = [abs(next_bb - current_bb) for next_bb in next_bbs]
         
         # Combina le differenze relative dei vicini precedenti e successivi
         relative_diffs = np.concatenate([relative_diffs_prev, relative_diffs_next], axis = 0)
-        
+        relative_page.append(np.concatenate([relative_page_prev, relative_page_next], axis = 0))
         relative_coordinates.append(relative_diffs)
 
        # print(relative_diffs)#, relative_coordinates)
-    return relative_coordinates
+    return relative_coordinates, relative_page
 
+def calculate_relative_Edistance(bb, k, page, centr):
+    relative_coordinates = []
+    relative_page = []
+    for i in range(len(bb)):
+        relative_page_prev = []
+        relative_page_next = []
+
+        current_bb = np.array(centr[i])
+        # Calcola i k vicini precedenti
+        
+        if i - k >= 0:
+            prev_bbs = np.array(centr[i-k:i])
+            page_prev = np.array(page[i-k:i])
+            for m in range(len(prev_bbs)):
+                if page_prev[m] != page[i]:
+                    relative_page_prev.append(1) # pagina diversa 
+                else:
+                    relative_page_prev.append(0)       
+        else:
+            prev_bbs = np.zeros(k) # o qualsiasi valore di default
+            relative_page_prev = np.zeros(k)
+        # Calcola i k vicini successivi
+        if i + k < len(bb):
+            next_bbs = np.array(centr[i+1:i+k+1])
+            page_next = np.array(page[i+1:i+k+1])
+            
+            for m in range(len(next_bbs)):
+                if page_next[m] != page[i]:
+                    relative_page_next.append(1)
+                    #next_bbs[m][0] = next_bbs[m][0] + 0.5
+                    #next_bbs[m][2] = next_bbs[m][2] + 0.5
+                else:
+                    relative_page_next.append(0)
+                 
+        else:
+            next_bbs = np.zeros(k) # o qualsiasi valore di default
+            relative_page_next = np.zeros(k)
+        # Calcola la differenza relativa tra la bounding box corrente e quelle dei k vicini precedenti e successivi
+        relative_diffs_prev = [distanza_euclidea(prev_bb, current_bb) for prev_bb in prev_bbs]
+        relative_diffs_next = [distanza_euclidea(next_bb, current_bb) for next_bb in next_bbs]
+        
+        # Combina le differenze relative dei vicini precedenti e successivi
+        relative_diffs = np.concatenate([relative_diffs_prev, relative_diffs_next], axis = 0)
+       
+        relative_page.append(np.concatenate([relative_page_prev, relative_page_next], axis = 0))
+     #   relative_page.append(relative_page_next)
+
+        relative_coordinates.append(relative_diffs)
+
+       # print(relative_diffs)#, relative_coordinates)
+    return relative_coordinates, relative_page
+
+def calculate_relative_coordinates(bb, k, page):
+    relative_coordinates = []
+    relative_page = []
+    for i in range(len(bb)):
+        relative_page_prev = []
+        relative_page_next = []
+
+        current_bb = np.array(bb[i])
+        # Calcola i k vicini precedenti
+        
+        if i - k >= 0:
+            prev_bbs = np.array(bb[i-k:i])
+            page_prev = np.array(page[i-k:i])
+            for m in range(len(prev_bbs)):
+                if page_prev[m] != page[i]:
+                    relative_page_prev.append(1) # pagina diversa 
+                    # prev_bbs[m][0] = bb[i][0] - 0.1
+                    # prev_bbs[m][2] = bb[i][2] - 0.1
+                    # if prev_bbs[m][0]<0:
+                    #     prev_bbs[m][0] = 0
+                    # if prev_bbs[m][1] <0:
+                    #    prev_bbs[m][1] = 0
+                else:
+                    relative_page_prev.append(0)       
+        else:
+            prev_bbs = np.zeros(k) # o qualsiasi valore di default
+            relative_page_prev = np.zeros(k)
+        # Calcola i k vicini successivi
+        if i + k < len(bb):
+            next_bbs = np.array(bb[i+1:i+k+1])
+            page_next = np.array(page[i+1:i+k+1])
+            
+            for m in range(len(next_bbs)):
+                if page_next[m] != page[i]:
+                    relative_page_next.append(1)
+                    #next_bbs[m][0] = next_bbs[m][0] + 0.5
+                    #next_bbs[m][2] = next_bbs[m][2] + 0.5
+                else:
+                    relative_page_next.append(0)
+                 
+        else:
+            next_bbs = np.zeros(k) # o qualsiasi valore di default
+            relative_page_next = np.zeros(k)
+        # Calcola la differenza relativa tra la bounding box corrente e quelle dei k vicini precedenti e successivi
+        relative_diffs_prev = [abs(prev_bb - current_bb) for prev_bb in prev_bbs]
+        relative_diffs_next = [abs(next_bb - current_bb) for next_bb in next_bbs]
+        
+        # Combina le differenze relative dei vicini precedenti e successivi
+        relative_diffs = np.concatenate([relative_diffs_prev, relative_diffs_next], axis = 0)
+       
+        relative_page.append(np.concatenate([relative_page_prev, relative_page_next], axis = 0))
+     #   relative_page.append(relative_page_next)
+
+        relative_coordinates.append(relative_diffs)
+
+       # print(relative_diffs)#, relative_coordinates)
+    return relative_coordinates, relative_page
+
+'''
+[array([0.39523851, 0.51318935, 0.39524584, 0.51318931]), array([0.0032092 , 0.30745736, 0.39493084, 0.11404561]), array([0.01025911, 0.08818663, 0.38446075, 0.08954136]), array([0.        , 0.04828066, 0.00122239, 0.04828066]), array([5.67799536e-04, 3.27053799e-02, 8.86906412e-06, 3.16299116e-02]), array([0.        , 0.01609353, 0.00304891, 0.01609353])]
+'''
 def get_area(bounding_boxes):
     areas = []
     widths = []
@@ -174,11 +302,17 @@ def normalize_bounding_box(box, image_width, image_height):
     
     return normalized_x0, normalized_y0, normalized_x1, normalized_y1
 
+def distanza_euclidea(centr1, centr2):
+    return np.sqrt(np.sum((np.array(centr1) - np.array(centr2))**2))
 
 def processing_lab(labels):
     #print(set(labels))
-    labels = ['other' if label in ['figcap', 'opara', 'secx','tabcap', 'alg'] else label for label in labels]
-    labels = ['meta' if label in ['mail', 'foot', 'title','affili', 'fnote', 'author'] else label for label in labels]
+    #{'page', 'note', 'fig', 'equ', 'title', 'tab', 'para', 'meta', 'caption', 'sec', 'alg'}
+    # labels = ['meta' if label in ['page', 'note', 'title'] else label for label in labels]
+    # labels = ['other' if label in ['fig', 'tab', 'alg', 'caption'] else label for label in labels]
+    # labels = ['para' if label in ['equ'] else label for label in labels]
+    #labels = ['other' if label in ['figcap', 'opara', 'secx','tabcap', 'alg'] else label for label in labels]
+    #labels = ['meta' if label in ['mail', 'foot', 'title','affili', 'fnote', 'author'] else label for label in labels]
 
     #le = LabelEncoder()
     #encoded_labels = le.fit_transform(labels)
@@ -188,6 +322,17 @@ def processing_lab(labels):
     encoded_labels = ohe.fit_transform(np.array(labels).reshape(-1, 1))
     #print(encoded_labels)
     return encoded_labels
+
+def processing_font(font):
+ 
+    #le = LabelEncoder()
+    #encoded_labels = le.fit_transform(labels)
+    ohe = OneHotEncoder(sparse=False)
+  #  print(set(labels))
+    # Adatta e trasforma le etichette
+    encoded_font = ohe.fit_transform(np.array(font).reshape(-1, 1))
+    #print(encoded_labels)
+    return encoded_font
 
 def calculate_relative_y(bb, k):
     relative_y = []
@@ -225,6 +370,43 @@ def calculate_relative_y(bb, k):
         #print(len(relative_diffs), (relative_diffs))
     return relative_y
 
+def calculate_relative_y_eucl(bb, k, centr):
+    relative_y = []
+    for i in range(len(centr)):
+        current_bb = np.array(centr[i])
+        # Estrai solo la coordinata y (secondo valore) della bounding box corrente
+       # current_y = current_bb[1]
+        
+        # Calcola i k vicini precedenti
+        if i - k >= 0:
+            prev_bbs = np.array(centr[i-k:i])
+        else:
+           # prev_bbs = np.zeros([k]) # o qualsiasi valore di default
+            prev_bbs = []
+            for pb in range(k): #TODO
+                prev_bbs.append(np.zeros([2]))
+       # print(prev_bbs, '|',current_y )
+        # Calcola i k vicini successivi
+        if i + k < len(centr):
+            next_bbs = np.array(centr[i+1:i+k+1])
+        else:
+            #next_bbs = np.zeros(k) # o qualsiasi valore di default
+            next_bbs = []
+            for nb in range(k): #TODO
+                next_bbs.append(np.zeros([2]))
+        
+        # Calcola la differenza relativa tra la coordinata y della bounding box corrente e quelle dei k vicini precedenti e successivi
+        relative_diffs_prev = [distanza_euclidea(prev_bb, current_bb) for prev_bb in prev_bbs]
+        relative_diffs_next = [distanza_euclidea(next_bb, current_bb) for next_bb in next_bbs]
+        
+        # Combina le differenze relative dei vicini precedenti e successivi
+        relative_diffs = np.concatenate([relative_diffs_prev, relative_diffs_next], axis = 0)
+        
+        relative_y.append(relative_diffs)
+        #print(len(relative_diffs), (relative_diffs))
+    return relative_y
+
+
 def calculate_relative_labels(labels_hot, k):
     relative_labels = []
     for i in range(len(labels_hot)):
@@ -251,10 +433,11 @@ def calculate_relative_labels(labels_hot, k):
     
     return relative_labels
 
-def weighted_labels(bb, labels, kr):
+def weighted_labels(bb, labels, kr, page, centr):
     # Calcola le coordinate y
-    distances = np.array(calculate_relative_y(bb, kr)) # k vicini -< 10
-    
+ #   distances = np.array(calculate_relative_y(bb, kr)) # k vicini -< 10
+    distances = np.array(calculate_relative_y_eucl(bb, kr, centr)) # k vicini -< 10
+
     # Processa le labels
     encoded_labels = processing_lab(labels) # classi 9
 
@@ -331,9 +514,10 @@ def get_graph_3class(json_file, kr, num_arch_node, class3, array_features):
             
         if 'rel' in array_features:
         # Calcola le coordinate relative per ogni nodo
-          relative_coordinates = calculate_relative_coordinates(n_bb, kr)
-          g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
-          print('Rel')
+            relative_coordinates, rel_page = calculate_relative_coordinates(n_bb, kr)
+            g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
+            print('Rel')
+            g.ndata['relative_page'] = th.tensor(rel_page)
 
         areas_array, widths, heights = get_area(n_bb)
         if 'area' in array_features:

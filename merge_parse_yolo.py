@@ -44,11 +44,13 @@ def check_box_inside(box_ex, box2_in):
 # dataset_parse/ json
 def main():
     #json_name = 'D13-1134.json'#'2022.naacl-industry.16.json'
-    path_json_text = 'yolo_hrdhs_672_3_testGT2/json_parse/' #+ json_name
+    path_json_text = 'yolo_hrds_4_gt_test/json_parse/'#'yolo_hrdhs_672_3_testGT2/json_parse/' #+ json_name
 
     path_json_imm = 'yolo_hrds_4_gt_test/json_yolo/'#EMNLP_D13-1134.json'
 
     save_path ='yolo_hrds_4_gt_test/json/'
+    if not os.path.exists(save_path):
+         os.makedirs(save_path)
     list_json = os.listdir(path_json_imm)
     for j in list_json:
         print(j)
@@ -62,7 +64,6 @@ def main():
         #'yolo_hrdhs_672_3_testGT2/json_yolo/ACL_2020.acl-main.99.json'# + json_name
         with open(json_text, errors="ignore") as json_file:
                 data_text = json.load(json_file)
-
         with open(json_imm, errors="ignore") as json_file:
                 data_yolo = json.load(json_file)
 
@@ -123,7 +124,7 @@ def get_dict_merge(data_text, data_image, comm_font):
                      break
                 else:
                     check_iou = True
-                    new_text_arr.append({'i': i, 'text':data_text[t]['text']})
+                    new_text_arr.append({'i': i, 'text':data_text[t]['text'], 'block':data_text[t]['block']})
                     break 
              
         if check_iou == False: # Non inserisco se ha trovato overlapp
@@ -132,13 +133,15 @@ def get_dict_merge(data_text, data_image, comm_font):
             for i in range(len(data_image)):
                   if int(data_image[i]['page']) == p:
                     new_text = ''
+                    block = 0
                     for m in new_text_arr:
                         #print(m)
                         if m['i'] == i:
+                             block = m['block']
                              new_text = new_text + ' ' + m['text']
                     
                     #print(new_text)
-                    dict = {'box': data_image[i]['box'], 'style': False, 'size': False, 'font': False, 'page': int(data_image[i]['page']), 'text': new_text, 'type': data_image[i]['class']}
+                    dict = {'block': block, 'box': data_image[i]['box'], 'style': False, 'size': False, 'font': False, 'page': int(data_image[i]['page']), 'text': new_text, 'type': data_image[i]['class']}
                     new_data.append(dict)
             new_text_arr = []
     return new_data

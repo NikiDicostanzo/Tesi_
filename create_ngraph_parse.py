@@ -11,7 +11,7 @@ from create_graphGT_3lab import calculate_relative_coordinates, get_area, normal
 
 
 device = th.device("cuda" if th.cuda.is_available() else "cpu")
-class_name = ['title', 'sec', 'meta', 'caption' , 'para', 'note', 'equ', 'tab', 'alg', 'page']
+class_name = ['title', 'sec', 'meta', 'caption' , 'para', 'note', 'equ', 'tab', 'alg', 'fig', 'page']
 
 def get_info_json(data):
     bounding_boxes = [item['box'] for item in data] # salvo tutte le bb delle miei pagine
@@ -23,30 +23,34 @@ def get_info_json(data):
     font = [item['font'] for item in data]
 
     labels = [item['class'] for item in data]
-    le = LabelEncoder()
-    encoded_labels = le.fit_transform(labels)
+    #le = LabelEncoder()
+    #encoded_labels = le.fit_transform(labels)
 
-    print('qui', len(encoded_labels), set(encoded_labels))
+    desired_encoding = {'title': 0, 'sec': 1, 'meta': 2, 'caption': 3, 'para': 4, 'note': 5, 'equ': 6, 'tab': 7, 'alg': 8, 'fig': 9,'page': 10}
+    encoded_labels = [desired_encoding[label] for label in labels]
     return bounding_boxes, page, text, size, type, style, font, encoded_labels
 
-def main(type, kr, num_arch_node, class3, array_features):
-    path_json = 'HRDS/' + type +'/'
+def get_all_graphs(folder, array_features):
+    path_json = folder #'HRDS/' + type +'/'
     list_j = os.listdir(path_json)
     all_graph = []
     pages = []
     centr =[]
     texts = []
     c = 0
+    print(len(list_j))
     for j in list_j:
-        #print(c)
+        print(c)
         json = path_json + j
-        g, page, centroid, text = get_graph(json, kr, num_arch_node, class3, array_features)
+        g, page, centroid, text = get_graph(json, array_features)
+       # print(g)
         all_graph.append(g)
         pages.append(page)
         centr.append(centroid)
         texts.append(text)
         c = c+1
-    return all_graph, np.concatenate(pages, axis=0), np.concatenate(centr, axis=0), np.concatenate(texts, axis=0)
+    print('QUI1_ fine ciclo')
+    return all_graph#, np.concatenate(pages, axis=0), np.concatenate(centr, axis=0), np.concatenate(texts, axis=0)
    
 def get_edge_node(bb):
     # gli elementi sono in ordine li collego semplicemente (?)
@@ -62,10 +66,9 @@ def get_edge_node(bb):
     return i_node, j_node
 
 
-
-def get_graph(folder, array_features):
+def get_graph(json_file, array_features):
  
-    json_file = folder + 'ACL_2020.acl-main.99.json'
+    #json_file = folder + 'ACL_2020.acl-main.99.json'
     with open(json_file) as f:
         data = json.load(f)
         bb, page, text, size, type, style, font, labels = get_info_json(data)
@@ -76,41 +79,40 @@ def get_graph(folder, array_features):
       #  #distances = cdist(centroids, centroids)  # Matrice distanza con ogni punto
 
         i, j = get_edge_node(bb)
-        print(len(i), len(j))
-        #print(i,j)
-      #  print(set(labels_edge))
+
         # Graph
         g = dgl.graph((i, j))
-        print(g)
-        print(len(bb))
+
           # PREDIRE
         g.ndata['labels'] = th.tensor(labels) 
-        print('Labels')
+       # print('Labels')
 
         #Node Features
         g.ndata['centroids'] = th.tensor(centroids)
         g.ndata['bb'] = th.tensor(n_bb)
+        g.ndata['size'] = th.tensor(size)
        # num_page = page[len(page)-1]
             
         if 'rel' in array_features:
-          kr = 3
+          kr = 15
         # Calcola le coordinate relative per ogni nodo
           relative_coordinates = calculate_relative_coordinates(n_bb, kr)
           g.ndata['relative_coordinates'] = th.tensor(relative_coordinates)
-          print('Rel')
+       #   print('Rel')
 
         areas_array, widths, heights = get_area(n_bb)
         if 'area' in array_features:
             g.ndata['area'] = th.tensor(areas_array)
-            print('Area')
+         
+         #   print('Area')
 
         if 'w' in array_features:
             g.ndata['widths'] = th.tensor(widths)
-            print('Width')
+         #   print('Width')
 
         if 'h' in array_features:
             g.ndata['heights'] = th.tensor(heights)
-            print('Heights')
+          #  print('Heights')
 
     return g, page, centroids, text
         
@@ -123,8 +125,9 @@ if __name__ == '__main__':
    #     os.makedirs(save_path)
     folder = 'yolo_hrds_4_gt_test/check_json_label/'
     array_features = ['bb', 'cent', 'area', 'w', 'h', 'rel']
-    g, page, centroids, text = get_graph(folder, array_features)
-    print(g)
+    get_all_graphs(folder, array_features)
+    # g, page, centroids, text = get_graph(folder, array_features)
+    # print(g)
 
 
 """ 

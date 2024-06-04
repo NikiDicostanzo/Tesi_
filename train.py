@@ -1,5 +1,6 @@
 import torch
 #from plot_edge_multipage_YOLO_new import get_graph_yolo
+from plot_edge_multipage_PARSE import get_graph_parse
 from z_boh.plot_edge_multipage_YOLO5 import get_graph_yolo
 
 from create_graphGT import get_one_g, get_graphs
@@ -48,7 +49,7 @@ def model_train(graph, val_graph, name_model, epoch, num_outc, array_features):
     model = Model(input, hidden , out_features).to(device)
 
     opt = torch.optim.Adam(model.parameters())#, lr=1e-08)
-
+    best_acc = 0
     for epoch in range(epoch):
         logit = model(graph, node_features)   
         #print(logit, '/n',edge_label.squeeze())
@@ -59,26 +60,21 @@ def model_train(graph, val_graph, name_model, epoch, num_outc, array_features):
         opt.step()
         
         acc = accuracy(logit, edge_label)
-        if epoch % 10 == 0:
+        if epoch % 30 == 0:
              print('Epoch {:05d} | Loss {:.4f} | Accuracy train set {:.4f}'
                    .format(epoch, loss.item(), acc))
-             
-        # Calcola la perdita e l'accuratezza sul set di validazione
-        # model.eval() # Imposta il modello in modalità di valutazione
-        # with torch.no_grad(): # Disabilita il calcolo del gradiente per la valutazione
-        #     val_logit = model(val_graph, node_features_val)
-        #     val_loss = F.cross_entropy(val_logit, edge_label_val.squeeze())
-        #     val_acc = accuracy(val_logit, edge_label_val)
-        #     if epoch % 10 == 0:
-        #       print('Validation Loss: {:.4f} | Validation Accuracy: {:.4f}'
-        #             .format(val_loss.item(), val_acc))
-
-        # # Salva il modello se mostra le migliori prestazioni sul set di validazione
-        # if val_loss < min_val_loss:
-        #     min_val_loss = val_loss
-        #     torch.save(model.state_dict(), 'best_model.pth')
+        if best_acc < acc:
+           best_acc = acc
+          # print('EPOCH', epoch)
+           my_model = model
+           if epoch > 500:
+            print('BEST Epoch {:05d} | Loss {:.4f} | Accuracy train set {:.4f}'
+                    .format(epoch, loss.item(), best_acc))
+           #torch.save(model.state_dict(), name_model)
+  
     # Salva il modello addestrato
-    torch.save(model.state_dict(), name_model)
+    print('MODEL: ', name_model)
+    torch.save(my_model.state_dict(), name_model)
 
 
 
@@ -129,25 +125,32 @@ def model_test(model_name, kr, num_arch_node, class3, array_features):
 
     print('Test Accuracy: {:.4f}'.format(acc)) # Test Accuracy: 0.9009
     
-def main_train(model_name, epoch, kr, num_arch_node, exp, class3, array_features):
+def main_train(model_name, epoch, kr, num_arch_node, num_arch_node2, exp, class3, array_features):
     #bg_train = get_one_g()#get_graphs()
   #  train_graphs, _, _ , _= get_graph_merge_gt()
     if exp == 'yolo':
       train_graphs, _ = get_graph_yolo(kr, num_arch_node, class3, 'train', array_features)
       #val_graphs, _ = get_graph_yolo(kr, num_arch_node, class3, 'val')
+    elif exp == 'parse':
+        train_graphs, page = get_graph_parse(kr, num_arch_node, num_arch_node2, class3, 'train', array_features)    
     else:
       train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3, array_features)
     #  train_graphs, _, _ , _= get_graphs_gt('train', kr, num_arch_node, class3)
     
-    dimensione_desiderata = 9 # TODO numero delle classi
-    
+    dimensione_desiderata = 11 # TODO numero delle classi
+    dimensione_desiderata_font = 6
+
     for graph in train_graphs:
-      #print(graph.ndata['labels'].shape[1])
+      print('QUI',graph.ndata['labels'].shape[1])
       # Assicurati che tutte le feature dei nodi abbiano la stessa dimensione e tipo di dati
       if 'labels' not in graph.ndata or graph.ndata['labels'].shape[1] != dimensione_desiderata:
           # Crea una feature di placeholder con la dimensione desiderata
           placeholder = torch.zeros((graph.number_of_nodes(), dimensione_desiderata), dtype=torch.float64)
           graph.ndata['labels'] = placeholder
+      if 'font' not in graph.ndata or graph.ndata['font'].shape[1] != dimensione_desiderata_font:
+          # Crea una feature di placeholder con la dimensione desiderata
+          placeholder = torch.zeros((graph.number_of_nodes(), dimensione_desiderata_font), dtype=torch.float64)
+          graph.ndata['font'] = placeholder
 
     print('Start Train')
     bg_train = dgl.batch(train_graphs) # num_nodes=725391, num_edges=811734,
@@ -165,11 +168,19 @@ def get_nfeatures(graph, array_features):
 
   #  page = graph.ndata['page'].float().unsqueeze(-1)
     data_features = []
-    centroids = graph.ndata['centroids'] 
-    data_features.append(centroids)
+   # centroids = graph.ndata['centroids']
+   # data_features.append(centroids)
+
+   # block = graph.ndata['block'].float().unsqueeze(-1) 
+   #data_features.append(block)
 
     bb = graph.ndata['bb']      
     data_features.append(bb)
+
+    if 'font' in  array_features:
+        font = graph.ndata['font'].float()
+        data_features.append(font)
+ 
 
     if 'lab' in array_features:
       lab = graph.ndata['labels'].float()#.unsqueeze(1)
@@ -179,6 +190,11 @@ def get_nfeatures(graph, array_features):
       coord_rel = graph.ndata['relative_coordinates'].float() 
       coord_rel_reshaped = coord_rel.view(coord_rel.size(0), -1)
       data_features.append(coord_rel_reshaped)
+
+      if 'pageRel' in array_features:
+        page_rel = graph.ndata['relative_page'].float()
+        page_rel_reshaped = page_rel.view(page_rel.size(0), -1)
+        data_features.append(page_rel_reshaped)
 
     if 'agg' in array_features:
       aggregated_labels =  graph.ndata['aggregated_labels'].float() 
@@ -213,11 +229,11 @@ def get_nfeatures(graph, array_features):
 
 if __name__ == '__main__':
     #'bb', 'cent', 'lab', 'area', 'w', 'h', 'rel', 'agg'
-    array_features = ['bb', 'cent', 'area', 'w', 'h', 'rel', 'lab', 'agg']
-   # main_train('model_bb_cent_area_w_h_rel10_lab_agg.pth', 1000, 10, 2, 'gt', True, array_features) 
+    array_features = ['bb', 'area', 'w', 'h','cent','rel', 'lab', 'agg', 'pageRel']#
+    main_train('z_check_giu/model_bb_lab_area_w_h_cent_pageRel_k6_aggE_archIn2_archOut2_dim11.pth', 1500, 6, 2, 2, 'parse', True, array_features) 
   #  #kr = num_dist_rel || num_arch_node = # edge x nodo | 3class = true
-
-    model_test('model_bb_cent_area_w_h_rel10_lab_agg.pth', 10, 2, True, array_features)
+#BEST Epoch 01499 | Loss 0.5193 | Accuracy train set 0.8719
+   # model_test('model_bb_cent_area_w_h_rel6_lab_agg.pth', 6, 2, True, array_features)
     #kr, num_arch_node, class3,
 
 # k2 -> [699346 586447 106252]

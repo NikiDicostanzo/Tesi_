@@ -16,7 +16,8 @@ def get_info_json(data):
     type = [item['type'] for item in data]
     style = [item['style'] for item in data]
     font = [item['font'] for item in data]
-    return bounding_boxes, page, text, size, type, style, font
+    block = [item['block'] for item in data]  
+    return bounding_boxes, page, text, size, type, style, font, block
 
 #dict_im = {'box': im['bbox'], 'height': im['height'], 'width': im['width'], 'page': k, 'type': 'img'}
 #dict_data = {'box' : bb[i], 'style': f_style[i], 'size': f_size[i], 'font': font[i], 'text': text[i], 'page': k, 'type': 'text'}
@@ -79,7 +80,7 @@ def split_string(stringa):
 def draw_all(path, bb, lab, page, name_im, wp, hp):
     #name = path + name_im + '/' + name_im + '_0.png' # iniz.
     name = path + name_im + '_0.png' # iniz.
-
+    
     image = Image.open(name)
     draw = ImageDraw.Draw(image)
     w , h = image.size
@@ -97,6 +98,8 @@ def draw_all(path, bb, lab, page, name_im, wp, hp):
             image.save(path_save)
             #name = path + name_im + '/' + name_im + '_' + str(page[i]) + '.png'
             name = path  + name_im + '_' + str(page[i]) + '.png'
+            if not os.path.exists(name):
+                break
             image = Image.open(name)
             draw = ImageDraw.Draw(image)
         if i== len(bb)-1:
@@ -139,6 +142,9 @@ def is_caption(bb, text, i, is_cap, size, labels, page):
     #         is_cap = False
     return is_cap
 
+def custom_key(item):
+    return (item['box'][1])  
+            
 def is_fnote(bb, text, i, is_note, size):
     #lett = text[i].split(' ')
     if is_number(text[i][0])\
@@ -192,7 +198,7 @@ def main(path ,save_path):
         new_data = []
         with open(json_file) as f:
             data = json.load(f)
-            bb, page, text, size, type, style, font = get_info_json(data)
+            bb, page, text, size, type, style, font, block = get_info_json(data)
             font_split = get_font_word(text, font)
             font_comm = get_font_comm(font_split)
             #print(font_comm, '|', Counter(font))
@@ -218,7 +224,8 @@ def main(path ,save_path):
                     elif style[i] == 'bold' and 9.5<= size[i] <= 12 \
                         and (font_comm in font[i]): # SEC # -> vedi numero prima (?)
                             t1 = text[i].replace(' ', '')
-                            if text[i][0] != '•' and (t1[0] in lettere_caps or is_number(t1[0])):      
+                            if text[i][0] != '•' and (t1[0] in lettere_caps or is_number(t1[0]) \
+                                                      or (i>0 and labels[-1]==1 and abs(bb[i][1]-bb[i-1][3])<3)):      
                                 labels.append(1)    #  Sec
                                     #break
                             elif is_cap:
@@ -231,7 +238,8 @@ def main(path ,save_path):
                         if 9.1<= size[i] <= 12 and \
                             not is_cap:# and not is_note: # Para # -> vedi numero prima (?)
                             labels.append(4) #
-                        elif lim_note > bb[i][1] >500 and not is_cap and 7<=size[i]<9.1 :#and ('NimbusRomNo9L' in font[i] or 'Times' in font[i]):# and is_note:
+                        elif i >0 and lim_note > bb[i][1] >500 and not is_cap and 7<=size[i]<9.1 and \
+                            ((labels[-1] == 5 and abs(bb[i][1]-bb[i-1][3])<3) or (labels[-1] != 5 and abs(bb[i][1]-bb[i-1][3])>=3) ):#and ('NimbusRomNo9L' in font[i] or 'Times' in font[i]):# and is_note:
                             labels.append(5)        # note
                             # is_cap -> se ho figure o table, poi controllo labels se è cap
                         elif size[i]<11.1 and is_cap: #caption #abs(bb[i][0] - bb[i - 1][0])<3) non va bene xk precedente è spostato a dx
@@ -257,8 +265,22 @@ def main(path ,save_path):
            # print(len(bb), len(labels))
             draw_all(path, bb, labels, page, name_im, wp, hp)
             #print(len(new_data))
+            tmp_dx = []
+            tmp_sx = []
             for i in range(len(bb)):
-                dict = {'box': bb[i], 
+                
+                if i>0 and page[i]!= page[i-1]:
+                    
+                    # ordino elementi 
+                    tmp_sx = sorted(tmp_sx, key=custom_key)
+                    tmp_dx = sorted(tmp_dx, key=custom_key)
+                    tmp = tmp_sx + tmp_dx    
+                    new_data = new_data + tmp
+                    tmp_dx = []
+                    tmp_sx = []
+
+                dict = {'block': block[i],
+                        'box': bb[i], 
                         'style': style[i], 
                         'size': size[i], 
                         'font': font[i], 
@@ -266,7 +288,13 @@ def main(path ,save_path):
                         'text': text[i], 
                         'type': type[i],
                         'class': lab[labels[i]]}
-                new_data.append(dict)
+                if bb[i][0]<300:
+                    tmp_sx.append(dict)
+                else:
+                    tmp_dx.append(dict)
+            
+            # Ordina i dati
+            #ordered_data = sorted(new_data, key=custom_key)
 
             save_json = folder +'check_json_label/' + j 
             if not os.path.exists(folder +'check_json_label/'):
@@ -287,7 +315,7 @@ def get_font_comm(font):
 if __name__ == '__main__':
    # dir = 'acl_anthology_pdfs/'
    # pdf = '2022.naacl-main.92.pdf'#2023.acl-long.150.pdf'# #solo per ridimensionare imm.
-    save_path = 'plot_bb_parse/'
+    save_path = 'yolo_hrds_4_gt_test/plot_bb_parse/'
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)

@@ -102,7 +102,7 @@ def get_font_word(text, font):
             new_font.append(font[i])
     return new_font
 
-def combine_bb(bb, f_style, f_size, font, text, k): 
+def combine_bb(bb, f_style, f_size, font, text, block, k): 
     comb = False
     new_bb = []
     data = []
@@ -176,12 +176,12 @@ def combine_bb(bb, f_style, f_size, font, text, k):
         else:
             if comb:
                 new_bb.append([x0, y0, x1, y1])
-                dict_data = get_dict([x0, y0, x1, y1], f_style[i], f_size[i], font[i], k, new_text, 'text')
+                dict_data = get_dict(block[i], [x0, y0, x1, y1], f_style[i], f_size[i], font[i], k, new_text, 'text')
                 comb = False                        
             else:
-                dict_data = get_dict(bb[i], f_style[i], f_size[i], font[i], k, text[i], 'text')
+                dict_data = get_dict(block[i], bb[i], f_style[i], f_size[i], font[i], k, text[i], 'text')
                 new_bb.append(bb[i])
-                
+           # print(dict_data)
             data.append(dict_data)
             new_text = ''    
     return data 
@@ -191,12 +191,11 @@ def contiene_simboli_speciali(stringa):
     pattern = re.compile('[^a-zA-Z0-9 ]')
     return bool(pattern.search(stringa))
 
-def get_text(all_infos, bb, f_size, f_style, font, text, k):
+def get_text(all_infos, bb, f_size, f_style, font, text, block_array, k):
     tmp = []
     conunt_block = 0
      
     for block in all_infos['blocks']:
-       # print(block)
         if 'lines' in block:
             for line in block['lines']:
                 c = 0
@@ -220,12 +219,13 @@ def get_text(all_infos, bb, f_size, f_style, font, text, k):
                     f_style.append(style)
                     font.append(span['font'])
                     text.append(span['text'])
+                    block_array.append(block['number'])
 
-                    dict_data = get_dict(span['bbox'], style, span['size'], span['font'], k, span['text'], 'text')
+                    dict_data = get_dict(block['number'], span['bbox'], style, span['size'], span['font'], k, span['text'], 'text')
                     tmp.append(dict_data)
                     c= c+1
         conunt_block = conunt_block + 1
-    return tmp, bb, f_style, f_size, font, text
+    return tmp, bb, f_style, f_size, font, text, block_array
 
 def get_line(k, page):
     draw = []
@@ -249,7 +249,7 @@ def get_images(k, page):
     image_data = []
     for im in imgblocks: # TODO MERGE
             #box_im = 
-        dict_im = get_dict(im['bbox'], False, False, False, k, False, 'img')
+        dict_im = get_dict([], im['bbox'], False, False, False, k, False, 'fig')
         image_data.append(dict_im)
     return image_data
 
@@ -258,7 +258,7 @@ def get_tables(k, page):
     tables = page.find_tables(intersection_tolerance=40)#, join_tolerance =1)#, snap_x_tolerance= 15)#horizontal_strategy='text', vertical_strategy='text')
     table_data = []
     for t in tables:
-        dict_tab = get_dict(t.bbox, False, False, False, k, t.extract(), 'tab')
+        dict_tab = get_dict([], t.bbox, False, False, False, k, t.extract(), 'tab')
         table_data.append(dict_tab)
     return table_data
 
@@ -269,8 +269,8 @@ def find_images_bbox(doc, page, k):
         image_bbox = page.get_image_bbox(image_list[i])
         print('image {} Bbox: {}'.format(i, image_bbox))
 
-def get_dict(box, style, size, font, page, text, type):
-    return {'box': box, 'style': style, 'size': size, 'font': font, 'page': page, 'text': text, 'type': type}
+def get_dict(block, box, style, size, font, page, text, type):
+    return {'block': block, 'box': box, 'style': style, 'size': size, 'font': font, 'page': page, 'text': text, 'type': type}
 
 def get_style(flags):
     if  bool(flags & 2**4):
@@ -370,20 +370,23 @@ def parse_pymupdf(path, name, save):
         f_size = []
         f_style = []
         font = []
-        text = []           
+        text = [] 
+        block = []          
 
         #table_data = get_tables(k, page)
         #image_data = get_images(k, page)
             #print(dict_im)
         #draw = get_line(k, page)
 
-        tmp_data, bb, f_style, f_size, font, text = get_text(all_infos, bb, f_size, f_style, font, text, k)
+        tmp_data, bb, f_style, f_size, font, text, block = get_text(all_infos, bb, f_size, f_style, font, text, block, k)
         
-        tmp = combine_bb(bb, f_style, f_size, font, text, k) 
-       # imm = get_images(k, page)   
+        tmp = combine_bb(bb, f_style, f_size, font, text, block, k) 
+        imm = get_images(k, page) 
+        tab = get_tables(k, page)  
        # #tmp = get_caption_tab(tmp, image_data, table_data) # TODO image and table # Metto immagini in fondo alla pagina ! !
-        data = data + tmp#_data  #+ imm
-    
+        data = data + tmp  + imm + tab #_data  #+ imm
+    if not os.path.exists(save +'json_parse/'):
+        os.makedirs(save +'json_parse/')
     save_json = save +'json_parse/' + name +'.json' 
     with open(save_json, 'w') as f:
         json.dump(data, f, indent=4)
@@ -392,8 +395,8 @@ def parse_pymupdf(path, name, save):
 
 if __name__ == '__main__':
     
-    dir =  'acl_anthology_pdfs_test/'#'acl_anthology_pdfs/'
-    save_path = 'yolo_hrdhs_672_3_testGT2/'#'dataset_parse/'
+    dir =  'acl_anthology_pdfs_train/'#'acl_anthology_pdfs/'
+    save_path = "Check_cm_Parse/"#'yolo_hrds_4_gt_test/'#'yolo_hrdhs_672_3_testGT2/'#'dataset_parse/'
     
     list_doc = os.listdir(dir) # Ciclare su PDF TODO
     #pdf = list_doc[2]
