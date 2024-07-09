@@ -13,11 +13,9 @@ class SAGE(nn.Module):
     def __init__(self, in_feats, hid_feats, out_feats):
         super().__init__()
         self.conv1 = SAGEConv(
-            in_feats=in_feats, out_feats=hid_feats, aggregator_type='mean')#, norm=nn.BatchNorm1d(hid_feats))#'mean') #'lstm')#pool
-        print(self.conv1 )
+            in_feats=in_feats, out_feats=hid_feats, aggregator_type='mean')      #, norm=nn.BatchNorm1d(hid_feats))#'mean') #'lstm')#pool
         self.conv2 = SAGEConv(
-            in_feats=hid_feats, out_feats=hid_feats, aggregator_type='mean')#, norm=nn.BatchNorm1d(out_feats))#'mean')
-        #print(self.conv2
+            in_feats=hid_feats, out_feats=hid_feats, aggregator_type='mean')        #, norm=nn.BatchNorm1d(out_feats))#'mean')
         self.conv3 = SAGEConv(
             in_feats=hid_feats, out_feats=out_feats, aggregator_type='mean')
         
