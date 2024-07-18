@@ -104,16 +104,16 @@ def get_data(path_json, path_image, folder, pagine, name,num,data_type):
                 
                 save_im = save_im_path + name_image
                 image.save(save_im) 
-            #if data[index]['class'] in ['tab', 'fig', 'alg', 'equ']:
-            class_lab = set_class_nine(data, index, save_lab_array)#set_class_all(data, index)
-            save_lab_array.append(class_lab) # mi serve per opara
-            #set_class_nine(data, index)
-            #class_lab = set_class_four(data, index)
-            txt_data = create_ann(data[index]['box'], width, height)
-        
-            tmp = class_lab + ' ' + txt_data  
-            #if class_lab== '0':
-            write.append(tmp)
+            if data[index]['class'] in ['tab', 'fig', 'alg', 'equ']:
+                class_lab = set_class_3(data, index)#, save_lab_array)#set_class_all(data, index)
+                save_lab_array.append(class_lab) # mi serve per opara
+                #set_class_nine(data, index)
+                #class_lab = set_class_four(data, index)
+                txt_data = create_ann(data[index]['box'], width, height)
+            
+                tmp = class_lab + ' ' + txt_data  
+                #if class_lab== '0':
+                write.append(tmp)
         return pagine,num
 
 
@@ -256,7 +256,7 @@ def all_json(path_json, path_images, name_dataset, data_type):
             else:
                 image = path_image #TODO + name per HRDS !!!!!!!!! per HRDH togli name
 
-            folder = "../dataset_hrds_10class_last/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
+            folder = "../dataset_hrdhx2_TabIMclass/"#"C:/Users/ninad/Desktop/Tesi/dataset/"  #dove salvo dati
             create_folder(folder)
             pagine,num = get_data(json, image, folder, pagine, name, num, data_type)
             
@@ -275,7 +275,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
    # path_json = "dataset/train.json"
     data_type = 'test'
-    name_dataset = 'HRDS'
+    name_dataset = 'HRDH'
     path_json = name_dataset+ "/"+ data_type + "/" #"HRDS/test/"
     path_images = name_dataset + "/images/"
     print(path_json)

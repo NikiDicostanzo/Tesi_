@@ -80,7 +80,7 @@ def main():
         for i in data_text:
             i['box'] = bb_scale(i['box'], w, h, float(wp), float(hp)) 
 
-        new_path = 'check_box_imm_equ/'
+        new_path = 'TESI_check_box_imm_equ/'
         if not os.path.exists(new_path):
             os.makedirs(new_path)
         

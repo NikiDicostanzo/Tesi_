@@ -85,11 +85,13 @@ def accuracy(indices, labels):
     correct = torch.sum(indices == labels)
     return correct.item() *1.0/ len(labels)
 
-def model_test(model_name, kr, num_arch_node, class3, array_features):
-    graph_test, _, _ , _ = get_graphs_gt('test', kr, num_arch_node, class3, array_features)#get_graphs3('test')
+def model_test(model_name, epoch, kr, num_arch_node, num_arch_node2, exp, class3, array_features):
+    
+    graph_test, page = get_graph_parse(kr, num_arch_node, num_arch_node2, class3, 'test', array_features)    
+    #graph_test, _, _ , _ = get_graphs_gt('test', kr, num_arch_node, class3, array_features)#get_graphs3('test')
     #graph_test = get_graph()
 
-    dimensione_desiderata = 9 # TODO numero delle classi
+    dimensione_desiderata = 11 # TODO numero delle classi
 
     for graph in graph_test:
       #print(graph.ndata['labels'].shape[1])
@@ -101,14 +103,16 @@ def model_test(model_name, kr, num_arch_node, class3, array_features):
     
     graph_test = dgl.batch(graph_test) # num_nodes=725391, num_edges=811734,
     graph_test = graph_test.int().to(device)
+    
 
-    node_features, input, edge_label = get_nfeatures(graph_test, array_features)
+    node_features, input, edge_label = get_nfeatures(graph, array_features)
 
-    out_features = 3 
+    out_features = 3 #num_outc
     hidden = 20
 
-    # Carica il modello addestrato
     model = Model(input, hidden , out_features).to(device)
+
+    # Carica il modello addestrato
     model.load_state_dict(torch.load(model_name))
 
     # Imposta il modello in modalità di valutazione
@@ -116,6 +120,7 @@ def model_test(model_name, kr, num_arch_node, class3, array_features):
 
         # Fai le previsioni sul set di test
     with torch.no_grad():
+        
         logits = model(graph_test, node_features)
         _, predictions = torch.max(logits, dim=1)
 
@@ -123,7 +128,7 @@ def model_test(model_name, kr, num_arch_node, class3, array_features):
     
     acc = accuracy(logits, edge_label)
 
-    print('Test Accuracy: {:.4f}'.format(acc)) # Test Accuracy: 0.9009
+    print('Test Accuracy: {:.4f}'.format(acc)) # Test Accuracy
     
 def main_train(model_name, epoch, kr, num_arch_node, num_arch_node2, exp, class3, array_features):
     #bg_train = get_one_g()#get_graphs()
@@ -141,7 +146,6 @@ def main_train(model_name, epoch, kr, num_arch_node, num_arch_node2, exp, class3
     dimensione_desiderata_font = 6
 
     for graph in train_graphs:
-      print('QUI',graph.ndata['labels'].shape[1])
       # Assicurati che tutte le feature dei nodi abbiano la stessa dimensione e tipo di dati
       if 'labels' not in graph.ndata or graph.ndata['labels'].shape[1] != dimensione_desiderata:
           # Crea una feature di placeholder con la dimensione desiderata
@@ -229,9 +233,13 @@ def get_nfeatures(graph, array_features):
 
 if __name__ == '__main__':
     #'bb', 'cent', 'lab', 'area', 'w', 'h', 'rel', 'agg'
-    array_features = ['bb', 'area', 'w', 'h','cent','rel', 'lab', 'agg', 'pageRel']#
-    main_train('z_check_giu/model_bb_lab_area_w_h_cent_pageRel_k6_aggE_archIn2_archOut2_dim11.pth', 1500, 6, 2, 2, 'parse', True, array_features) 
+    array_features = ['bb', 'area', 'w', 'h','cent', 'lab', 'rel', 'agg', 'pageRel']#
+    main_train('z_check_FIN/model_bb_area_w_h_cent_lab_rel3_agg_pageRel_in1_out1.pth', 1500, 3, 1, 2, 'parse', True, array_features) 
+  #  model_test('z_check_FIN/model_bb_area_w_h_cent.pth', 1500, 6, 1, 1, 'parse', True, array_features) 
+
   #  #kr = num_dist_rel || num_arch_node = # edge x nodo | 3class = true
+
+
 #BEST Epoch 01499 | Loss 0.5193 | Accuracy train set 0.8719
    # model_test('model_bb_cent_area_w_h_rel6_lab_agg.pth', 6, 2, True, array_features)
     #kr, num_arch_node, class3,

@@ -288,13 +288,14 @@ def get_image(file, save, name):
     width = 596
     height = 842
 
-    check_folder(save +'images/' +name)
-
+    check_folder(save +'images_TESI/' +name)
+    print(save +'images_TESI/' +name)
     for i in range(len(images)):
        # images[i].save(save +'images/' +name + '/' +name + '_' +str(i) + '.jpg', 'JPEG') 
         img_resized = images[i].resize((width, height), Image.LANCZOS)
        # images[i].save(save +'image_test/' +name + '_' +str(i) + '.jpg', 'JPEG') 
-        img_resized.save(save +'image_test/' +name + '_' +str(i) + '.jpg', 'JPEG') 
+        print(save +'images_TESI/' +name + '_' +str(i) + '.jpg')
+        img_resized.save(save +'images_TESI/' + name +'/' +name + '_' +str(i) + '.jpg', 'JPEG') 
 
 def check_folder(path):
     if not os.path.exists(path):
@@ -323,10 +324,13 @@ def draw_all(path, data, name_im, new_path):
 
     i = 0
     for d in data:
+        print(d['box'])
         if i >0 and data[i]['page'] != data[i-1]['page'] :
             #path_save = 'bb_check/' + name_im + '_' +str(data[i-1]['page']) + '.jpg'
-            path_save = new_path + name_im + '_' +str(data[i-1]['page']) + '.jpg'
+            path_save = 'TESI_mergePY/' + name_im + '_' +str(data[i-1]['page']) + '.jpg'
+            #path_save = new_path + name_im + '_' +str(data[i-1]['page']) + '.jpg'
 
+            print('qq',path_save)
             image.save(path_save)
 
             name = path + name_im + '_' + str(data[i]['page']) + '.jpg'
@@ -334,7 +338,8 @@ def draw_all(path, data, name_im, new_path):
             draw = ImageDraw.Draw(image)
 
         color = get_color(data[i]['type'])
-        draw.rectangle(bb_scale(d['box'], w, h, float(wp), float(hp)), outline = color, width=2) 
+      #  bb_scale(d['box'], w, h, float(wp), float(hp))
+        draw.rectangle(d['box'], outline = color, width=1) 
 
         i = i + 1
 
@@ -384,39 +389,40 @@ def parse_pymupdf(path, name, save):
         imm = get_images(k, page) 
         tab = get_tables(k, page)  
        # #tmp = get_caption_tab(tmp, image_data, table_data) # TODO image and table # Metto immagini in fondo alla pagina ! !
-        data = data + tmp  + imm + tab #_data  #+ imm
+        data = data + tmp#_data  #   + imm + tab #_+ imm
     if not os.path.exists(save +'json_parse/'):
         os.makedirs(save +'json_parse/')
     save_json = save +'json_parse/' + name +'.json' 
     with open(save_json, 'w') as f:
-        json.dump(data, f, indent=4)
+       json.dump(data, f, indent=4)
 
     return data
 
 if __name__ == '__main__':
     
-    dir =  'acl_anthology_pdfs_train/'#'acl_anthology_pdfs/'
-    save_path = "Check_cm_Parse/"#'yolo_hrds_4_gt_test/'#'yolo_hrdhs_672_3_testGT2/'#'dataset_parse/'
-    
-    list_doc = os.listdir(dir) # Ciclare su PDF TODO
-    #pdf = list_doc[2]
-    #pdf ='2022.naacl-demo.0.pdf'
-    print(len(list_doc))
+        dir =  'acl_anthology_pdfs_train/'#'acl_anthology_pdfs/'#_test/'#'acl_anthology_pdfs/'
+        save_path = 'TESI_mergePY/'# "Check_cm_Parse/"#'yolo_hrds_4_gt_test/'#'yolo_hrdhs_672_3_testGT2/'#
+        check_folder(save_path)
+        list_doc = os.listdir(dir) # Ciclare su PDF TODO
+        #pdf = list_doc[2]
+        #pdf ='2022.naacl-demo.0.pdf'
+        print(len(list_doc))
 
-    for pdf in list_doc:
+    #for pdf in list_doc:
       #  pdf = '2020.acl-main.99.pdf'#2021.naacl-main.67.pdf'#'P11-1008.pdf' #D13-1134.pdf'
       ##  pdf = '2023.acl-long.150.pdf'#'2022.naacl-main.92.pdf'#
     #    pdf = "2020.acl-main.99.pdf"#"2023.acl-long.150.pdf"#'2022.naacl-demo.4.pdf'
+        pdf = '2020.acl-main.233.pdf'#'2020.acl-main.86.pdf'#'2022.naacl-demo.4.pdf'
         print(pdf)
         pdf_path = dir + pdf
 
         name = pdf.replace('.pdf', '')
         
         # Get image from PDF
-        #get_image(pdf_path, save_path, name)
+        get_image(pdf_path, save_path, name)
         data = parse_pymupdf(pdf_path, name, save_path)
-        """   new_path = 'bb_draw_parse/'
+        new_path = 'bb_draw_parse_PERTESI/'
         check_folder(new_path)
-        draw_all(save_path + 'images/' + name +'/', data, name, new_path) """
+        draw_all(save_path + 'images_TESI/' + name +'/', data, name, new_path)
 
 #1355

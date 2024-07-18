@@ -10,7 +10,7 @@ from create_graphGT_3lab import get_graphs_gt
 import os
 import dgl
 from PIL import Image, ImageDraw as D
-from train import get_nfeatures
+from train import accuracy, get_nfeatures
 from z_boh.plot_edge_multipage_GT_Merge import get_graph_merge_gt
 
 from evaluation import get_cm
@@ -52,8 +52,11 @@ def inference(graph_test, model_name, num_class, array_features):
         print(probabilities)
         _, predictions = torch.max(probabilities, dim=1)
        # top_p, top_class = probabilities.topk(3, dim=1)
-  
-    print('qui',set(np.array(predictions)))
+    
+    acc = accuracy(logits, edge_label)
+
+    print('Test Accuracy: {:.4f}'.format(acc)) # Test Accuracy
+   # print('qui',set(np.array(predictions)))
     return predictions
 
 def get_images(type, exp):#TODO CAMBIARE PER YOLO e GT
@@ -168,17 +171,17 @@ def plot_edge(texts, image_list, page, new_cent, count, u, v, image1, image2, la
         if lab[index] == 1:
             color = 'blue'
             wid = 2
-            con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+            #con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         elif lab[index] == 2:
             color = 'cyan'
             wid = 2
-            con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+           # con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
 #
         elif lab[index] == 0:
             color = 'red'
             wid = 1
    
-       # con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
+        con_draw.line([tuple(cu), tuple(cv)], fill=color, width=wid)
         index = index + 1
     con_img.save(path_save_conc)
  
@@ -259,10 +262,13 @@ def main(name_pth, folder_save, type_data, model_name, name, exp, name_exp, kr, 
     
     i_node, j_node = graph_test.edges()
     edges = list(zip(i_node.tolist(), j_node.tolist()))
-    new_y_true, new_predictions = get_lab_different_page(y_true, predictions, page, edges)
+    new_y_true, new_predictions = get_lab_different_page(y_true.cpu().numpy(), predictions.cpu().numpy(), page, edges)
 
-    get_cm(name, name_pth + '_all_pred', np.array(y_true), np.array(predictions),class_names)
-    get_cm(name, name_pth + '_page_diff_pred', np.array(new_y_true), np.array(new_predictions),class_names)
+    get_cm(name, name_pth + '_all_pred', y_true.cpu().numpy(), predictions.cpu().numpy(),class_names)
+    get_cm(name, name_pth + '_page_diff_pred', new_y_true, (new_predictions),class_names)
+   
+   # get_cm(name, name_pth + '_all_pred', np.array(y_true), np.array(predictions),class_names)
+   # get_cm(name, name_pth + '_page_diff_pred', np.array(new_y_true), np.array(new_predictions),class_names)
     print('Draw')
    # draw_save_edge(folder_save, path_image, image_list, page, graph_test, predictions, exp, name_exp) 
    # draw_save_edge(folder_save, path_image, image_list, page, graph_test, y_true, exp, name_exp) #
@@ -271,17 +277,17 @@ def main(name_pth, folder_save, type_data, model_name, name, exp, name_exp, kr, 
 if __name__ == '__main__':
     top = 'yolo_hrds_4_gt_test'
     # Cartella dove salvo immagini 
-    name_pth = 'bb_lab_area_w_h_cent_pageRel_k6_aggE_archIn2_archOut2_dim11' #'bb_cent_area_w_h_lab_k6_0.5' 
+    name_pth ='bb_area_w_h_cent_lab_rel3_agg_pageRel_in1_out1' #bb_area_w_h_cent_lab_rel6_agg_pageRel_in1_out1'#'bb_area_w_h_cent_in1_out1' #'bb_cent_area_w_h_lab_k6_0.5' 
 
     folder_save = 'yolo_hrds_4_gt_test/savepred/' + name_pth +'/'
  
-    #folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_bb_lab_rel_cent_blue/'
-    array_features = ['bb', 'cent', 'area', 'h', 'w', 'lab',  'pageRel','agg', 'rel']
+    #folder_save = name + '/'#'sp_bb_lab_rel6_cent/' #'sp_RRbb_lab_rel_cent_blue/'
+    array_features = ['bb', 'cent', 'area', 'h', 'w', 'lab', 'rel', 'agg',  'pageRel']#,'agg', 'rel']
 
-    name_exp = 'blue'#'exp_rel5_lab_agg'  #TODO
-    model_name = 'z_check_giu/model_' + name_pth + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
-    main(name_pth, folder_save, 'test', model_name, top, 'parse', name_exp, 6, 3, 2, 2, True, array_features) # type, kr, num_class, num_arch_node
+    name_exp = ''#'exp_rel5_lab_agg'  #TODO
+    model_name = 'z_check_FIN/model_' + name_pth + '.pth'#'Pesi/model__bb_lab_rel_cent.pth'
+    main(name_pth, folder_save, 'test', model_name, top, 'parse', name_exp, 3, 3, 1, 1, True, array_features) # type, kr, num_class, num_arch_node
        #                     kr, num_class, num_arch_node, class3
-
+    print("EXP: ", name_pth)
 
        #

@@ -38,30 +38,31 @@ def get_graph():
 
 
 def get_color(lab):
-    lab = int(lab)
-    if lab == 0:
-        color = 'red'
-    elif lab == 1:
-        color = 'cyan'
-    elif lab == 2:
-        color = 'green'
-    elif lab == 3:
-        color = 'gray'
-    elif lab == 4:
-        color = 'yellow'
-    elif lab == 5:
-        color = 'purple'
-    elif lab == 6:
-        color = 'blue'
-    elif lab == 7:
-        color = 'orange'
-    elif lab == 8:
-        color = 'magenta'
-    elif lab == 9:
-        color = 'pink'
-         #color = '#ECEBBD'
-    else:
-        color = 'black'
+    color ='black'
+    # lab = int(lab)
+    # if lab == 0:
+    #     color = 'red'
+    # elif lab == 1:
+    #     color = 'cyan'
+    # elif lab == 2:
+    #     color = 'green'
+    # elif lab == 3:
+    #     color = 'gray'
+    # elif lab == 4:
+    #     color = 'yellow'
+    # elif lab == 5:
+    #     color = 'purple'
+    # elif lab == 6:
+    #     color = 'blue'
+    # elif lab == 7:
+    #     color = 'orange'
+    # elif lab == 8:
+    #     color = 'magenta'
+    # elif lab == 9:
+    #     color = 'pink'
+    #      #color = '#ECEBBD'
+    # else:
+    #     color = 'black'
 
     return color
 
@@ -172,7 +173,7 @@ def get_font_word(text, font):
     return new_font
 
 def main(path ,save_path):
-    folder = 'yolo_hrds_4_gt_test/'
+    folder = 'yolo_hrds_4_gt_train/'
 
     folder_json = folder + 'json/'
     list_json = os.listdir(folder_json)
@@ -180,7 +181,7 @@ def main(path ,save_path):
          #770 : 842 = x : 792
         p1 = '_'.join(j.split('_')[1:])
         pdf = p1.replace('json', 'pdf')
-        pdf_path = 'acl_anthology_pdfs_test/' + pdf 
+        pdf_path = 'acl_anthology_pdfs_train/' + pdf 
         wp, hp = dimension_pdf(pdf_path)
         lim_note = (770*hp)/842
 
@@ -315,11 +316,11 @@ def get_font_comm(font):
 if __name__ == '__main__':
    # dir = 'acl_anthology_pdfs/'
    # pdf = '2022.naacl-main.92.pdf'#2023.acl-long.150.pdf'# #solo per ridimensionare imm.
-    save_path = 'yolo_hrds_4_gt_test/plot_bb_parse/'
+    save_path = 'yolo_hrds_4_gt_train/plot_bb_parse/'
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    path = '../dataset_hrds_4class/test/images/'#'dataset_parse/images/'
+    path = '../dataset_hrds_4class/train/images/'#'dataset_parse/images/'
    # pdf_path = dir + pdf
     main(path ,save_path)
 
